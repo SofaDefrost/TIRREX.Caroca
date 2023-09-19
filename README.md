@@ -26,7 +26,7 @@ In the CMake GUI also enable the following plugins:
  
 ### Optional 
 
-- SoftRobots.Inverse plugin for SOFA (private directory, ask for access or use the provided binaries instead of compiling), to solve the inverse kinematics of the robot
+- [SoftRobots.Inverse](https://github.com/SofaDefrost/SoftRobots) plugin for SOFA to solve the inverse kinematics of the robot
 
 
 ## How to
@@ -35,9 +35,9 @@ In the CMake GUI also enable the following plugins:
 Run the simulation. In a terminal:
 
 ```bash
-~$ cd TIRREX/Caroca
-~/TIRREX/Caroca$ runSofa scene.py 
-~/TIRREX/Caroca$ runSofa sceneInverseKinematics.py  # for inverse resolution
+~$ cd TIRREX.Caroca
+~/TIRREX.Caroca$ runSofa scene.py 
+~/TIRREX.Caroca$ runSofa sceneInverseKinematics.py  # for inverse resolution
 ```
 
 ## Features
@@ -51,7 +51,6 @@ The geometric and mechanical parameters can be changed from the file `params.py`
 ## To do
 
 - [ ] Merge Karim's work on pulleys  
-- [ ] Add inverse problem, use SlidingActuators from SoftRobots.Inverse plugin   
 
 
 ## Authors
