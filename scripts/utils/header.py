@@ -18,7 +18,7 @@ def addHeader(rootnode, multithreading=False, inverse=False):
     settings = rootnode.addChild('Settings')
     settings.addObject('RequiredPlugin', pluginName=[
         "ArticulatedSystemPlugin",
-        "CosseratPlugin",  # Needed to use component RigidDistanceMapping
+        "Cosserat",  # Needed to use component RigidDistanceMapping
         "Sofa.Component.AnimationLoop",  # Needed to use components FreeMotionAnimationLoop
         "Sofa.Component.Collision.Detection.Algorithm",
         # Needed to use components BVHNarrowPhase, BruteForceBroadPhase, CollisionPipeline

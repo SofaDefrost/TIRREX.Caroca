@@ -20,7 +20,7 @@ class BaseCosserat(BaseObject):
     def __addRod(self):
         self.node = self.modelling.addChild(self.name)
         self.simulation.addChild(self.node)
-        self.node.addObject('RequiredPlugin', pluginName=['CosseratPlugin'])
+        self.node.addObject('RequiredPlugin', pluginName=['Cosserat'])
 
         nbSections = self.params.nbSections
         dx = self.length / nbSections
