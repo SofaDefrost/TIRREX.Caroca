@@ -1,9 +1,11 @@
 from params import Parameters
 import numpy as np
+from math import floor
 import Sofa.Core
 import Sofa.constants.Key as Key
 from scripts.pulley import Pulley
 from scripts.cable import Cable
+from splib3.numerics import vadd, vsub, Quat, Vec3
 
 
 class CarocaController(Sofa.Core.Controller):
@@ -111,22 +113,22 @@ class Caroca:
 
         dx = -self.params.structure.thickness
         shift = -self.params.pulley.shift
-        position = [[dx, dx, dx + shift],
-                    [dx + shift, dx, dx],
+        self.positionsPulley = [[dx, dx, dx + shift],
+                                [dx + shift, dx, dx],
 
-                    [dx, dx, -dx - shift],
-                    [dx + shift, dx, -dx],
+                                [dx, dx, -dx - shift],
+                                [dx + shift, dx, -dx],
 
-                    [-dx, dx, dx + shift],
-                    [-dx - shift, dx, dx],
+                                [-dx, dx, dx + shift],
+                                [-dx - shift, dx, dx],
 
-                    [-dx, dx, -dx - shift],
-                    [-dx - shift, dx, -dx]]
+                                [-dx, dx, -dx - shift],
+                                [-dx - shift, dx, -dx]]
 
         a = [-0.3, -0.3, 0.3, 0.3, 0.3, 0.3, -0.3, -0.3]
         for i in range(8):
             Pulley(self.pulleys, self.structure,
-                   position[i], a[i], [0, 0, 1, 1, 2, 2, 3, 3][i], name="Pulley" + str(i))
+                   self.positionsPulley[i], a[i], [0, 0, 1, 1, 2, 2, 3, 3][i], name="Pulley" + str(i))
 
     def __addPlatform(self):
         self.platform = self.modelling.addChild('Platform')
@@ -187,15 +189,56 @@ class Caroca:
 
         pulleyId = [0, 2, 4, 6, 1, 3, 5, 7]
         structureId = [0, 1, 2, 3, 0, 1, 2, 3]
+        self.cables = []
         for i in range(nbCables):
-            positionPulley = np.copy(
-                self.pulleys.getChild('Pulley' + str(pulleyId[i])).Rigid.MechanicalObject.position.value[2])
-            positionPulley[1] += -0.15
-            direction = [positionStructure[structureId[i]][j] + positionPulley[j] - positionBase[i][j] for
-                         j in range(3)]
+            positionPulley = vadd(positionStructure[structureId[i]], self.positionsPulley[pulleyId[i]])
+            positionPulley[1] += -0.1
+            direction = Vec3(vsub(positionBase[i], positionPulley))
 
-            beam = Cable(self.modelling, self.simulation, self.corners, i, direction,
-                         self.cableModel, positionBase[i], name="Cable" + str(i)).beam
+            totalLength = self.params.cable.length
+            length1 = direction.getNorm()
+            length2 = totalLength - length1
+            direction.normalize()
+
+            v = Vec3(direction)
+            q = Quat.createFromVectors(v, Vec3([1., 0., 0.]))
+
+            nbSections = self.params.cable.nbSections
+            dx = totalLength / nbSections
+
+            nbSections1 = floor(length1 / totalLength * nbSections)
+            nbSections2 = nbSections - nbSections1
+            positions = [[positionPulley[0] - direction[0] * dx,
+                          positionPulley[1] - length2 + dx * i,
+                          positionPulley[2],
+                          0, 0, 0.707, 0.707] for i in range(nbSections2)]
+
+            positions += [[positionPulley[0] + direction[0] * dx * i,
+                           positionPulley[1] + direction[1] * dx * i,
+                           positionPulley[2] + direction[2] * dx * i]
+                          + list(q) for i in range(nbSections1 + 1)]
+
+            beam = Cable(self.modelling, self.simulation,
+                         positions=positions, length=totalLength,
+                         attachNode=self.corners, attachIndex=i,
+                         cableModel=self.cableModel, name="Cable" + str(i)).beam
+            self.cables.append(beam.rod)
+
+            slidingpoints = self.pulleys.getChild('Pulley'+str(pulleyId[i])).Rigid.SlidingPoints
+
+            difference = beam.rod.addChild('Difference')
+            slidingpoints.addChild(difference)
+
+            difference.addObject('MechanicalObject', template='Rigid3', position=[0, 0, 0, 0, 0, 0, 0] * 3)
+            difference.addObject('RestShapeSpringsForceField', points=list(range(3)), stiffness=1e12)
+            difference.addObject('BeamProjectionDifferenceMultiMapping', template='Rigid3,Rigid3,Rigid3',
+                                 directions=[0, 1, 1, 0, 0, 0, 0],
+                                 indicesInput1=list(range(3)),
+                                 input1=slidingpoints.getMechanicalState().linkpath,
+                                 input2=beam.rod.getMechanicalState().linkpath,
+                                 interpolationInput2=beam.rod.BeamInterpolation.linkpath,
+                                 output=difference.getMechanicalState().linkpath,
+                                 draw=False, drawSize=0.1)
 
             if self.cableModel == 'beam':  # TODO: remove once we have the sliding actuator
                 beam.node.speed.setParent(self.structure.speed.getLinkPath())
@@ -209,9 +252,14 @@ def createScene(rootnode):
     from scripts.utils.header import addHeader, addSolvers
 
     settings, modelling, simulation = addHeader(rootnode)
-    addSolvers(simulation, firstOrder=False)
+    addSolvers(simulation, firstOrder=False, rayleighStiffness=0.1)
     rootnode.VisualStyle.displayFlags = "showInteractionForceFields showCollisionModels"
 
-    Caroca(modelling, simulation, cableModel='beam')
+    caroca = Caroca(modelling, simulation, cableModel='beam')
+    for i, cable in enumerate(caroca.cables):
+        cable.addObject('RestShapeSpringsForceField', points=[0], stiffness=1e12)
+        if i in range(4, 8):
+            simulation.getChild('Cable'+str(i)).speed.value = -0.1
+            simulation.getChild('Cable'+str(i)).displacement.value = -0.1
 
     rootnode.addObject('VisualGrid', size=10, nbSubdiv=100)

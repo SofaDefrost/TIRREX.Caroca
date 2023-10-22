@@ -1,6 +1,4 @@
 import Sofa.Core
-from splib3.numerics import Quat, Vec3
-from math import pi
 
 
 class BaseObject:
@@ -10,19 +8,14 @@ class BaseObject:
     deformable: Sofa.Core.Node
     rod: Sofa.Core.Node
 
-    def __init__(self, modelling, simulation, params, length, name='BaseBeam', positionBase=[0, 0, 0, 0, 0, 0, 1],
-                 collisionGroup=0):
+    def __init__(self, modelling, simulation, params, positions, length, name='BaseBeam', collisionGroup=0):
         self.modelling = modelling
         self.simulation = simulation
         self.params = params
+        self.positions = positions
+        self.length = length
         self.name = name
         self.collisionGroup = collisionGroup
-        self.length = length
-
-        self.positionBase = positionBase
-        self.translation = positionBase[0:3]
-        self.rotation = Quat(positionBase[3:7]).getEulerAngles()
-        self.rotation = [r * 180 / pi for r in self.rotation]
 
     def addCylinderTopology(self):
         positions = self.rod.MechanicalObject.position.value

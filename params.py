@@ -11,7 +11,8 @@ class CableParameters:
     radius: float = 0.004
     density: float = 7.850e3
     maxDisplacement: float = 0.3
-    nbSections: int = 20
+    nbSections: int = 80
+    length: float = 5
 
 
 @dataclass
