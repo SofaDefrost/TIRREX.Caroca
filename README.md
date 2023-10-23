@@ -27,10 +27,9 @@ In the CMake GUI also enable the following plugins:
 ### Optional 
 
 - [SoftRobots.Inverse](https://github.com/SofaDefrost/SoftRobots) plugin for SOFA to solve the inverse kinematics of the robot
-
+- [tkinter](https://docs.python.org/fr/3/library/tkinter.html), GUI to pilot the cables. This package is distributed by default with python on MacOS and Windows.
 
 ## How to
-
 
 Run the simulation. In a terminal:
 

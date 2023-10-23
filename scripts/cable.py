@@ -18,12 +18,12 @@ class Cable:
     params = Parameters()
 
     def __init__(self,
-                 modelling, simulation,
+                 modelling, parent,
                  positions, length,
                  attachNode, attachIndex,
                  cableModel='beam', name="Cable"):
         self.modelling = modelling
-        self.simulation = simulation
+        self.parent = parent
         self.attachNode = attachNode
         self.attachIndex = attachIndex
         self.cableModel = cableModel
@@ -32,11 +32,13 @@ class Cable:
     def __addCable(self, positions, length, name):
 
         if self.cableModel == 'cosserat':
-            beam = BaseCosserat(self.modelling, self.simulation, self.params.cable,
+            beam = BaseCosserat(self.modelling, self.parent, self.params.cable,
                                 name=name, positions=positions, length=length)
         else:
-            beam = BaseBeam(self.modelling, self.simulation, self.params.cable,
+            beam = BaseBeam(self.modelling, self.parent, self.params.cable,
                             name=name, positions=positions, length=length)
+
+        beam.node.addData(name='length', value=length, type='float', help="cable's length")
 
         distance = beam.base.addChild('Distance')
         self.attachNode.addChild(distance)
@@ -53,6 +55,7 @@ class Cable:
 
 def createScene(rootnode):
     from scripts.utils.header import addHeader, addSolvers
+    from gui import CablesGUI
     import params
 
     settings, modelling, simulation = addHeader(rootnode)
@@ -66,11 +69,15 @@ def createScene(rootnode):
                    showObject=True, showObjectScale=0.1)
     load.addObject('UniformMass', totalMass=10)
 
+    cables = simulation.addChild("Cables")
+
     nbSections = params.CableParameters.nbSections
     dx = length / nbSections
     positions = [[dx * i, 0, 0, 0, 0, 0, 1] for i in range(nbSections + 1)]
-    cable = Cable(modelling, simulation,
+    cable = Cable(modelling, cables,
                   positions=positions, length=length,
                   attachNode=load, attachIndex=0,
                   cableModel="beam", name="Cable").beam
     cable.base.addObject('FixedConstraint', indices=[0])
+
+    rootnode.addObject(CablesGUI(cables=cables))

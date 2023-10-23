@@ -2,7 +2,7 @@ from scripts.utils import addArticulationCenter
 import os
 from math import sin, cos, pi, floor
 
-path = os.getcwd() + '/../'
+path = os.path.dirname(os.path.realpath(__file__)) + '/../'
 
 
 class Pulley:
@@ -17,8 +17,8 @@ class Pulley:
         self.node = node.addChild(name)
         pulley = self.node
         pulley.addObject("MechanicalObject", position=[angle, 0], template='Vec1')
-        pulley.addObject('RestShapeSpringsForceField', points=[0], stiffness=1e-4)
-        pulley.addObject('RestShapeSpringsForceField', points=[1], stiffness=1e12)
+        pulley.addObject('RestShapeSpringsForceField', name='rssff1', points=[0], stiffness=1e-4)
+        pulley.addObject('RestShapeSpringsForceField', name='rssff2', points=[1], stiffness=1e12)
         pulley.addObject('ArticulatedHierarchyContainer')
 
         rigid = pulley.addChild('Rigid')
@@ -78,6 +78,7 @@ class Pulley:
 def createScene(rootnode):
     from scripts.utils.header import addHeader, addSolvers
     from scripts.cable import Cable
+    from gui import CablesGUI
     import params
 
     settings, modelling, simulation = addHeader(rootnode)
@@ -104,7 +105,8 @@ def createScene(rootnode):
     positions += [[0, length / 2, 0, 0, 0, 0, 1]]
     positions += [[dx * 2, length / 2 - dx * (i + 1), 0, 0, 0, -0.707, 0.707] for i in range(floor(nbSections / 2))]
 
-    cable = Cable(modelling, simulation,
+    cables = simulation.addChild('Cables')
+    cable = Cable(modelling, cables,
                   positions=positions, length=length,
                   attachNode=load, attachIndex=0,
                   cableModel='beam', name="Cable").beam
@@ -126,5 +128,4 @@ def createScene(rootnode):
                          output=difference.getMechanicalState().linkpath,
                          draw=False, drawSize=0.1)
 
-    cable.node.speed.value = -0.1
-    cable.node.displacement.value = -0.5
+    rootnode.addObject(CablesGUI(cables=cables))

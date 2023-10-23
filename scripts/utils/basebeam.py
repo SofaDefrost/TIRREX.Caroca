@@ -26,33 +26,32 @@ class BeamController(Sofa.Core.Controller):
         node = self.object.node
         dt = node.getRoot().dt.value
 
-        if node.speed.value > 0 and self.displacement + node.speed.value * dt > node.displacement.value:
-            node.speed.value = 0
-        if node.speed.value < 0 and self.displacement + node.speed.value * dt < node.displacement.value:
-            node.speed.value = 0
+        if node.velocity.value > 0 and self.displacement + node.velocity.value * dt > node.displacement.value:
+            node.velocity.value = 0
+        if node.velocity.value < 0 and self.displacement + node.velocity.value * dt < node.displacement.value:
+            node.velocity.value = 0
 
         if self.index < 0 or self.index > self.indexLimit:  # the whole beam has been deployed or retracted
-            node.speed.value = 0  # stop the motion
+            node.velocity.value = 0  # stop the motion
             self.index = 0 if self.index < 0 else self.indexLimit
             return
 
-        speed = node.speed.value
+        velocity = node.velocity.value
         lengthList = self.object.rod.BeamInterpolation.lengthList
-
         # Deploy or retract
-        if speed > 0 or speed < 0:
+        if velocity > 0 or velocity < 0:
             lengths = list(np.copy(lengthList.value))
-            lengths[self.index] += node.speed.value * dt
-            self.displacement += node.speed.value * dt
+            lengths[self.index] += node.velocity.value * dt
+            self.displacement += node.velocity.value * dt
 
             # Limit deployment
-            if node.speed.value > 0 and lengths[self.index] > self.length:
-                lengths[self.index] -= node.speed.value * dt
+            if node.velocity.value > 0 and lengths[self.index] > self.length:
+                lengths[self.index] -= node.velocity.value * dt
                 self.index -= 1
 
             # Limit retraction
-            if node.speed.value < 0 and lengths[self.index] < eps:
-                lengths[self.index] -= node.speed.value * dt
+            if node.velocity.value < 0 and lengths[self.index] < eps:
+                lengths[self.index] -= node.velocity.value * dt
                 self.index += 1
 
             lengthList.value = lengths
@@ -89,10 +88,10 @@ class BaseBeam(BaseObject):
 
         # The beam
         self.node.addData(name="indexExtremity", type='int', value=nbPoints - 1)
-        self.deformable = self.node.addChild('Deformable' + self.name)
+        self.deformable = self.node.addChild('Deformable')
         self.deformable.addObject('MechanicalObject', template='Rigid3', position=self.positions[1:nbPoints])
 
-        self.rod = self.deformable.addChild('Rod' + self.name)
+        self.rod = self.deformable.addChild('Rod')
         self.base.addChild(self.rod)
         self.rod.addObject('EdgeSetTopologyContainer', edges=[[i, i + 1] for i in range(nbSections)])
         self.rod.addObject('MechanicalObject', template='Rigid3', position=self.positions)
@@ -113,7 +112,7 @@ class BaseBeam(BaseObject):
 
         # Define velocity of deployment/retraction and adds controller
         # TODO: remove once we have the sliding actuator
-        self.node.addData(name='speed', type='float', help='deployment speed', value=0)
+        self.node.addData(name='velocity', type='float', help='deployment velocity', value=0)
         self.node.addData(name='displacement', type='float', help='deployment displacement', value=0)
         self.node.addObject(BeamController(self, 0, dx))
 
@@ -133,5 +132,5 @@ def createScene(rootnode):
     positions = [[dx * i, 0, 0, 0, 0, 0, 1] for i in range(nbSections + 1)]
     beam = BaseBeam(modelling, simulation, params.CableParameters, positions, length)
     beam.node.RigidBase.addObject('FixedConstraint', indices=0)
-    beam.node.speed.value = -0.1
+    beam.node.velocity.value = -0.1
     beam.node.displacement.value = -2

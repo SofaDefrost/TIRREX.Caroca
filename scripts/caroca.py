@@ -1,31 +1,10 @@
 from params import Parameters
 import numpy as np
 from math import floor
-import Sofa.Core
-import Sofa.constants.Key as Key
 from scripts.pulley import Pulley
 from scripts.cable import Cable
 from splib3.numerics import vadd, vsub, Quat, Vec3
-
-
-class CarocaController(Sofa.Core.Controller):
-
-    def __init__(self, *args, **kwargs):
-        Sofa.Core.Controller.__init__(self, *args, **kwargs)
-        self.structure = args[0]
-
-    def onKeypressedEvent(self, event):
-
-        k = event.get("key")
-        dt = self.structure.getRoot().dt.value
-
-        if k == Key.plus:
-            self.structure.speed.value = 0.07
-        elif k == Key.minus:
-            self.structure.speed.value = -0.07
-        else:
-            self.structure.speed.value = 0
-        self.structure.displacement.value = self.structure.displacement.value + self.structure.speed.value * dt
+from gui import CablesGUI
 
 
 class Caroca:
@@ -44,6 +23,7 @@ class Caroca:
         self.position = position
         self.cableModel = cableModel
         self.inverse = inverse
+        self.cables = None
 
         self.__addStructure()
         self.__addPulleys()
@@ -58,6 +38,7 @@ class Caroca:
 
     def __addStructure(self):
         self.structure = self.modelling.addChild('Structure')
+        self.simulation.addChild(self.structure)
 
         dx = self.params.structure.length / 2. + self.params.structure.thickness
         dy = self.params.structure.height / 2. + self.params.structure.thickness
@@ -184,12 +165,12 @@ class Caroca:
         positionBase = list(np.copy(self.corners.MechanicalObject.position.value))
 
         if self.cableModel == 'beam':  # TODO: remove once we have the sliding actuator
-            self.structure.addData(name='speed', type='float', help='cable deployment speed', value=0)
+            self.structure.addData(name='velocity', type='float', help='cable deployment velocity', value=0)
             self.structure.addData(name='displacement', type='float', help='cable deployment displacement', value=0)
 
         pulleyId = [0, 2, 4, 6, 1, 3, 5, 7]
         structureId = [0, 1, 2, 3, 0, 1, 2, 3]
-        self.cables = []
+        self.cables = self.simulation.addChild('Cables')
         for i in range(nbCables):
             positionPulley = vadd(positionStructure[structureId[i]], self.positionsPulley[pulleyId[i]])
             positionPulley[1] += -0.1
@@ -218,11 +199,10 @@ class Caroca:
                            positionPulley[2] + direction[2] * dx * i]
                           + list(q) for i in range(nbSections1 + 1)]
 
-            beam = Cable(self.modelling, self.simulation,
+            beam = Cable(self.modelling, self.cables,
                          positions=positions, length=totalLength,
                          attachNode=self.corners, attachIndex=i,
                          cableModel=self.cableModel, name="Cable" + str(i)).beam
-            self.cables.append(beam.rod)
 
             slidingpoints = self.pulleys.getChild('Pulley'+str(pulleyId[i])).Rigid.SlidingPoints
 
@@ -230,7 +210,7 @@ class Caroca:
             slidingpoints.addChild(difference)
 
             difference.addObject('MechanicalObject', template='Rigid3', position=[0, 0, 0, 0, 0, 0, 0] * 3)
-            difference.addObject('RestShapeSpringsForceField', points=list(range(3)), stiffness=1e12)
+            difference.addObject('RestShapeSpringsForceField', points=list(range(3)), stiffness=1e12, angularStiffness=0)
             difference.addObject('BeamProjectionDifferenceMultiMapping', template='Rigid3,Rigid3,Rigid3',
                                  directions=[0, 1, 1, 0, 0, 0, 0],
                                  indicesInput1=list(range(3)),
@@ -241,11 +221,11 @@ class Caroca:
                                  draw=False, drawSize=0.1)
 
             if self.cableModel == 'beam':  # TODO: remove once we have the sliding actuator
-                beam.node.speed.setParent(self.structure.speed.getLinkPath())
+                beam.node.velocity.setParent(self.structure.velocity.getLinkPath())
                 beam.node.displacement.setParent(self.structure.displacement.getLinkPath())
 
     def addController(self):
-        self.structure.addObject(CarocaController(self.structure))
+        self.structure.addObject(CablesGUI(self.cables))
 
 
 def createScene(rootnode):
@@ -256,10 +236,8 @@ def createScene(rootnode):
     rootnode.VisualStyle.displayFlags = "showInteractionForceFields showCollisionModels"
 
     caroca = Caroca(modelling, simulation, cableModel='beam')
-    for i, cable in enumerate(caroca.cables):
-        cable.addObject('RestShapeSpringsForceField', points=[0], stiffness=1e12)
-        if i in range(4, 8):
-            simulation.getChild('Cable'+str(i)).speed.value = -0.1
-            simulation.getChild('Cable'+str(i)).displacement.value = -0.1
+    for i, cable in enumerate(caroca.cables.children):
+        cable.RigidBase.addObject('RestShapeSpringsForceField', points=[0], stiffness=1e12)
 
     rootnode.addObject('VisualGrid', size=10, nbSubdiv=100)
+

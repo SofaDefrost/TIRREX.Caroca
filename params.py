@@ -25,7 +25,7 @@ class PulleyParameters:
 @dataclass
 class PlatformParameters:
     side: float = 1
-    mass: float = 2
+    mass: float = 200
 
 
 @dataclass
@@ -43,6 +43,8 @@ class Parameters:
     pulley: PulleyParameters = PulleyParameters()
     platform: PlatformParameters = PlatformParameters()
     structure: StructureParameters = StructureParameters()
+
+    velocity: float = 0.5  # m/s
 
 
 
