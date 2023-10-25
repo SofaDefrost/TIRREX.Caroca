@@ -53,7 +53,7 @@ class App(threading.Thread):
             tkinter.Grid.columnconfigure(self.root, i, weight=1)
             tkinter.Label(cablesFrame, text="Cable" + str(i),
                           font=self.font).grid(row=i + 1, column=0, padx=self.padx, pady=self.pady, sticky="NSEW")
-            self.addScale(cablesFrame, i + 1, 1, 0.001, 0, -cable.length.value, slider)
+            self.addScale(cablesFrame, i + 1, 1, 0.001, 0, -cable.length.value / 2, slider)
 
         self.root.mainloop()
 

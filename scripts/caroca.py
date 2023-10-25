@@ -1,6 +1,6 @@
 from params import Parameters
 import numpy as np
-from math import floor
+from math import floor, pi
 from scripts.pulley import Pulley
 from scripts.cable import Cable
 from splib3.numerics import vadd, vsub, Quat, Vec3
@@ -94,22 +94,32 @@ class Caroca:
 
         dx = -self.params.structure.thickness
         shift = -self.params.pulley.shift
-        self.positionsPulley = [[dx, dx, dx + shift],
-                                [dx + shift, dx, dx],
+        r = self.params.pulley.radius
+        self.positionsPulley = [[dx, dx - r, dx + shift],
+                                [dx + shift, dx - r, dx],
 
-                                [dx, dx, -dx - shift],
-                                [dx + shift, dx, -dx],
+                                [dx, dx - r, -dx - shift],
+                                [dx + shift, dx - r, -dx],
 
-                                [-dx, dx, dx + shift],
-                                [-dx - shift, dx, dx],
+                                [-dx, dx - r, dx + shift],
+                                [-dx - shift, dx - r, dx],
 
-                                [-dx, dx, -dx - shift],
-                                [-dx - shift, dx, -dx]]
+                                [-dx, dx - r, -dx - shift],
+                                [-dx - shift, dx - r, -dx]]
 
-        a = [-0.3, -0.3, 0.3, 0.3, 0.3, 0.3, -0.3, -0.3]
+        a = [-0.3 - pi, -0.3 - pi,
+             0.3 + pi, 0.3 + pi,
+             0.3, 0.3,
+             -0.3, -0.3]
+        self.pulleys.addObject('MechanicalObject', template='Rigid3',
+                               position=[self.positionsPulley[i] + list(Quat.createFromAxisAngle([0., 1., 0.], a[i]))
+                                         for i in range(8)],
+                               showObject=False)
+        self.pulleys.addObject('RigidMapping', rigidIndexPerPoint=[0, 0, 1, 1, 2, 2, 3, 3], globalToLocalCoords=False)
+
         for i in range(8):
-            Pulley(self.pulleys, self.structure,
-                   self.positionsPulley[i], a[i], [0, 0, 1, 1, 2, 2, 3, 3][i], name="Pulley" + str(i))
+            Pulley(self.pulleys,
+                   angle=0, indexInput2=i, name="Pulley" + str(i))
 
     def __addPlatform(self):
         self.platform = self.modelling.addChild('Platform')
@@ -173,7 +183,8 @@ class Caroca:
         self.cables = self.simulation.addChild('Cables')
         for i in range(nbCables):
             positionPulley = vadd(positionStructure[structureId[i]], self.positionsPulley[pulleyId[i]])
-            positionPulley[1] += -0.1
+            positionPulley[0] += [1, 1, -1, -1, 1, 1, -1, -1][i] * - 0.02
+            positionPulley[1] += self.params.pulley.radius
             direction = Vec3(vsub(positionBase[i], positionPulley))
 
             totalLength = self.params.cable.length
@@ -204,16 +215,18 @@ class Caroca:
                          attachNode=self.corners, attachIndex=i,
                          cableModel=self.cableModel, name="Cable" + str(i)).beam
 
-            slidingpoints = self.pulleys.getChild('Pulley'+str(pulleyId[i])).Rigid.SlidingPoints
+            slidingpoints = self.pulleys.getChild('Pulley' + str(pulleyId[i])).Rigid.SlidingPoints
 
             difference = beam.rod.addChild('Difference')
             slidingpoints.addChild(difference)
 
-            difference.addObject('MechanicalObject', template='Rigid3', position=[0, 0, 0, 0, 0, 0, 0] * 3)
-            difference.addObject('RestShapeSpringsForceField', points=list(range(3)), stiffness=1e12, angularStiffness=0)
+            nbSlidingPoints = 5
+            difference.addObject('MechanicalObject', template='Rigid3', position=[0, 0, 0, 0, 0, 0, 0] * nbSlidingPoints)
+            difference.addObject('RestShapeSpringsForceField', points=list(range(nbSlidingPoints)), stiffness=1e12,
+                                 angularStiffness=0)
             difference.addObject('BeamProjectionDifferenceMultiMapping', template='Rigid3,Rigid3,Rigid3',
                                  directions=[0, 1, 1, 0, 0, 0, 0],
-                                 indicesInput1=list(range(3)),
+                                 indicesInput1=list(range(nbSlidingPoints)),
                                  input1=slidingpoints.getMechanicalState().linkpath,
                                  input2=beam.rod.getMechanicalState().linkpath,
                                  interpolationInput2=beam.rod.BeamInterpolation.linkpath,
@@ -232,7 +245,7 @@ def createScene(rootnode):
     from scripts.utils.header import addHeader, addSolvers
 
     settings, modelling, simulation = addHeader(rootnode)
-    addSolvers(simulation, firstOrder=False, rayleighStiffness=0.1)
+    addSolvers(simulation, firstOrder=False, rayleighStiffness=0.2)
     rootnode.VisualStyle.displayFlags = "showInteractionForceFields showCollisionModels"
 
     caroca = Caroca(modelling, simulation, cableModel='beam')
@@ -240,4 +253,3 @@ def createScene(rootnode):
         cable.RigidBase.addObject('RestShapeSpringsForceField', points=[0], stiffness=1e12)
 
     rootnode.addObject('VisualGrid', size=10, nbSubdiv=100)
-

@@ -10,7 +10,6 @@ class CableParameters:
     poissonRatio: float = 0.499
     radius: float = 0.004
     density: float = 7.850e3
-    maxDisplacement: float = 0.3
     nbSections: int = 80
     length: float = 5
 
