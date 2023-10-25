@@ -2,8 +2,31 @@ from scripts.utils import addArticulationCenter
 import os
 from math import sin, cos, pi, floor
 from params import Parameters
+import numpy as np
+import Sofa
 
 path = os.path.dirname(os.path.realpath(__file__)) + '/../'
+
+
+class PulleyController(Sofa.Core.Controller):
+    """
+    Control the pulley visual rotation
+    """
+
+    params = Parameters()
+
+    def __init__(self, *args, **kwargs):
+        Sofa.Core.Controller.__init__(self, args, kwargs)
+        self.name = "PulleyController"
+        self.pulley = args[0]
+        self.cable = args[1]
+
+    def onAnimateBeginEvent(self, event):
+
+        if self.cable is not None:
+            position = list(np.copy(self.pulley.getMechanicalState().rest_position.value))
+            position[1] = [- self.cable.BeamController.displacement / self.params.pulley.radius]
+            self.pulley.getMechanicalState().rest_position.value = position
 
 
 class Pulley:
@@ -30,11 +53,11 @@ class Pulley:
         rigid.addObject('MechanicalObject', template='Rigid3',
                         position=[0, 0, 0, 0, 0, 0, 1] * 3,
                         showObject=False,
-                        showObjectScale=0.1,
+                        showObjectScale=0.05,
                         showIndices=False, showIndicesScale=0.1)
 
         slidingpoints = rigid.addChild('SlidingPoints')
-        slidingpoints.addObject('MechanicalObject', template='Rigid3', showObject=True, showObjectScale=0.01,
+        slidingpoints.addObject('MechanicalObject', template='Rigid3', showObject=False, showObjectScale=0.01,
                                 position=[
                                     [-r, -0.1, 0, 0, 0, sin(pi / 4), cos(pi / 4)],
                                     [-r, 0, 0, 0, 0, sin(pi / 4), cos(pi / 4)],
@@ -43,9 +66,9 @@ class Pulley:
                                     [0, r, 0, 0, 0, 0, 1],
                                     [r * cos(pi / 4), r * sin(pi / 4), 0, 0, 0, -sin(pi / 8),
                                      cos(pi / 8)]],
-                                translation=[r - 0.02, 0, 0]
+                                translation=[r, 0, 0]
                                 )
-        slidingpoints.addObject('RigidMapping', index=2, globalToLocalCoords=False)
+        slidingpoints.addObject('RigidMapping', index=1, globalToLocalCoords=False)
 
         rigid.addObject('ArticulatedSystemMapping',
                         indexInput2=indexInput2,
@@ -64,13 +87,16 @@ class Pulley:
 
             ogl = visual.addChild('OGL')
             ogl.addObject('MeshSTLLoader', filename=path + 'mesh/pulley' + str(i + 1) + '.stl',
-                          scale=0.001
+                          scale=0.001,
+                          translation=[0.02, 0, 0]
                           )
             ogl.addObject('GenerateRigidMass', src='@MeshSTLLoader', density=1e3)
             ogl.addObject('OglModel', src='@MeshSTLLoader')
             ogl.addObject('RigidMapping', index=0)
 
             visual.addObject('UniformMass', vertexMass=ogl.GenerateRigidMass.rigidMass.linkpath)
+
+        pulley.addObject(PulleyController(pulley, None))
 
         return pulley
 
@@ -95,10 +121,11 @@ def createScene(rootnode):
     dx = length / nbSections
 
     pulleys = simulation.addChild('Pulleys')
-    pulleys.addObject("MechanicalObject", position=[-0.03, length / 2 - 0.075, 0, 0, 0, 0, 1], template='Rigid3')
+    pulleys.addObject("MechanicalObject", position=[-0.07, length / 2 - 0.075, 0, 0, 0, 0, 1], template='Rigid3')
     pulleys.addObject("FixedConstraint", indices=[0])
 
-    slidingpoints = Pulley(pulleys, indexInput2=0).node.Rigid.SlidingPoints
+    pulley = Pulley(pulleys, indexInput2=0).node
+    slidingpoints = pulley.Rigid.SlidingPoints
 
     if not onlyPulley:
         load = simulation.addChild('Load')
@@ -111,9 +138,11 @@ def createScene(rootnode):
                        scale3d=[0.1, 0.1, 0.1], translation=[0, -0.1, 0])
         visu.addObject('RigidMapping')
 
-        positions = [[- dx * 2, dx * i, 0, 0, 0, 0.707, 0.707] for i in range(floor(nbSections / 2))]
+        positions = [[- dx * 3, dx * i, 0, 0, 0, 0.707, 0.707] for i in range(floor(nbSections / 2) - 1)]
+        positions += [[-0.03, length / 2 - 0.02, 0, 0, 0, 0, 1]]
         positions += [[0, length / 2, 0, 0, 0, 0, 1]]
-        positions += [[dx * 2, length / 2 - dx * (i + 1), 0, 0, 0, -0.707, 0.707] for i in range(floor(nbSections / 2))]
+        positions += [[0.03, length / 2 - 0.02, 0, 0, 0, 0, 1]]
+        positions += [[dx * 3, length / 2 - dx * (i + 1), 0, 0, 0, -0.707, 0.707] for i in range(1, floor(nbSections / 2))]
 
         cables = simulation.addChild('Cables')
         cable = Cable(modelling, cables,
@@ -121,6 +150,7 @@ def createScene(rootnode):
                       attachNode=load, attachIndex=0,
                       cableModel='beam', name="Cable").beam
         cable.base.addObject('FixedConstraint', indices=[0])
+        pulley.PulleyController.cable = cable.node
 
         difference = cable.rod.addChild('Difference')
         slidingpoints.addChild(difference)

@@ -183,7 +183,7 @@ class Caroca:
         self.cables = self.simulation.addChild('Cables')
         for i in range(nbCables):
             positionPulley = vadd(positionStructure[structureId[i]], self.positionsPulley[pulleyId[i]])
-            positionPulley[0] += [1, 1, -1, -1, 1, 1, -1, -1][i] * - 0.02
+            positionPulley[0] += [1, 1, -1, -1, 1, 1, -1, -1][i] * - 0.04
             positionPulley[1] += self.params.pulley.radius
             direction = Vec3(vsub(positionBase[i], positionPulley))
 
