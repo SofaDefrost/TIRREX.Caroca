@@ -1,4 +1,4 @@
-# Caroca
+# XXL Robotics
 
 
 Platform held by eight cables. 
@@ -34,9 +34,9 @@ In the CMake GUI also enable the following plugins:
 Run the simulation. In a terminal:
 
 ```bash
-~$ cd TIRREX.Caroca
-~/TIRREX.Caroca$ runSofa scene.py 
-~/TIRREX.Caroca$ runSofa sceneInverseKinematics.py  # for inverse resolution
+~$ cd TIRREX.XXL
+~/TIRREX.XXL$ runSofa scene.py 
+~/TIRREX.XXL$ runSofa sceneInverseKinematics.py  # for inverse resolution
 ```
 
 ## Features
