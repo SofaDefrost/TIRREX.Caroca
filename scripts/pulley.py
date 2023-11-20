@@ -91,7 +91,10 @@ class Pulley:
                           translation=[0.02, 0, 0]
                           )
             ogl.addObject('GenerateRigidMass', src='@MeshSTLLoader', density=1e3)
-            ogl.addObject('OglModel', src='@MeshSTLLoader')
+            ogl.addObject('OglModel', src='@MeshSTLLoader',
+                          color=[[0.4, 0.4, 0.4, 1.],
+                                 [0.4, 0.4, 0.4, 1.],
+                                 [1, 1, 1, 1.]][i])
             ogl.addObject('RigidMapping', index=0)
 
             visual.addObject('UniformMass', vertexMass=ogl.GenerateRigidMass.rigidMass.linkpath)
@@ -102,6 +105,7 @@ class Pulley:
 
 
 def createScene(rootnode):
+    from splib3.animation import animate, AnimationManager
     from scripts.utils.header import addHeader, addSolvers
     from scripts.cable import Cable
     from gui import CablesGUI
@@ -109,12 +113,13 @@ def createScene(rootnode):
 
     settings, modelling, simulation = addHeader(rootnode)
     addSolvers(simulation, rayleighStiffness=0.2, firstOrder=False)
+    rootnode.addObject(AnimationManager(rootnode))
     rootnode.VisualStyle.displayFlags = "showInteractionForceFields showCollisionModels"
-    rootnode.addObject('VisualGrid', plane='z', size=4, nbSubdiv=40)
-    rootnode.addObject('VisualGrid', plane='z', size=4, nbSubdiv=4, thickness=2)
-    rootnode.gravity.value = [0, -9810, 0]
+    rootnode.addObject('VisualGrid', plane='z', size=4, nbSubdiv=40, enable=False)
+    rootnode.addObject('VisualGrid', plane='z', size=4, nbSubdiv=4, thickness=2, enable=False)
+    rootnode.gravity.value = [0, -9.810, 0]
 
-    onlyPulley = False
+    onlyPulley = True
 
     length = 2
     nbSections = params.CableParameters.nbSections
@@ -125,13 +130,14 @@ def createScene(rootnode):
     pulleys.addObject("FixedConstraint", indices=[0])
 
     pulley = Pulley(pulleys, indexInput2=0).node
+    pulley.Rigid.Visual2.addObject("VisualStyle", displayFlags='showWireframe')
     slidingpoints = pulley.Rigid.SlidingPoints
 
     if not onlyPulley:
         load = simulation.addChild('Load')
-        load.addObject('MechanicalObject', position=[dx * 2, 0, 0, 0, 0, 0, 1], template='Rigid3',
+        load.addObject('MechanicalObject', position=[dx * 3, 0, 0, 0, 0, 0, 1], template='Rigid3',
                        showObject=False, showObjectScale=0.05)
-        load.addObject('UniformMass', totalMass=1)
+        load.addObject('UniformMass', totalMass=500)
         visu = load.addChild('Visu')
         visu.addObject('MeshOBJLoader', filename='mesh/cube.obj')
         visu.addObject('OglModel', src='@MeshOBJLoader',
@@ -168,3 +174,16 @@ def createScene(rootnode):
                              draw=False, drawSize=0.1)
 
         rootnode.addObject(CablesGUI(cables=cables))
+    else:  # Animate pulley
+        def animation(factor, target, value, index, direction, startTime=0):
+            if factor > 0:
+                pos = np.copy(target.position.value)
+                pos[index][direction] = cos(value * factor)
+                target.position.value = pos
+
+        # Linear actuation
+        targetObject = pulley.getMechanicalState()
+        animate(animation, {'target': targetObject, 'value': pi, 'index': 0, 'direction': 0, 'startTime': 0},
+                duration=2, mode='pingpong')
+        animate(animation, {'target': targetObject, 'value': 2*pi, 'index': 1, 'direction': 0, 'startTime': 0},
+                duration=2, mode='pingpong')

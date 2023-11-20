@@ -17,6 +17,7 @@ def addHeader(rootnode, multithreading=False, inverse=False):
     """
     settings = rootnode.addChild('Settings')
     settings.addObject('RequiredPlugin', pluginName=[
+        "BeamAdapter",
         "ArticulatedSystemPlugin",
         "Cosserat",  # Needed to use component RigidDistanceMapping
         "Sofa.Component.AnimationLoop",  # Needed to use components FreeMotionAnimationLoop
@@ -40,6 +41,11 @@ def addHeader(rootnode, multithreading=False, inverse=False):
         "Sofa.Component.Visual",  # Needed to use components VisualStyle
         "Sofa.GL.Component.Rendering3D",  # Needed to use components OglGrid, OglModel
         "Sofa.GUI.Component",  # Needed to use components AttachBodyButtonSetting
+        "Sofa.Component.Constraint.Lagrangian.Model",
+        "Sofa.Component.Engine.Generate",
+        "Sofa.Component.Mapping.Linear",
+        "Sofa.Component.Mapping.NonLinear",
+        "Sofa.Component.StateContainer"
     ])
     settings.addObject('BackgroundSetting', color=[1, 1, 1, 1])
     settings.addObject('AttachBodyButtonSetting', stiffness=1e6)

@@ -1,13 +1,16 @@
 from params import Parameters
 import numpy as np
-from math import floor, pi
+from math import floor
+
+from splib3.numerics import vadd, vsub, Quat, Vec3
+
 from scripts.pulley import Pulley
 from scripts.cable import Cable
-from splib3.numerics import vadd, vsub, Quat, Vec3
+from scripts.support import Support
 from gui import CablesGUI
 
 
-class Caroca:
+class System:
     """
     params:
     cableModel: (string) either cosserat or beam, default is beam
@@ -15,7 +18,7 @@ class Caroca:
 
     params = Parameters()
 
-    def __init__(self, modelling, simulation, name='Caroca', position=[0, 0, 0, 0, 0, 0, 1], cableModel='beam',
+    def __init__(self, modelling, simulation, name='System', position=[0, 0, 0, 0, 0, 0, 1], cableModel='beam',
                  inverse=False):
         self.modelling = modelling
         self.simulation = simulation
@@ -26,6 +29,7 @@ class Caroca:
         self.cables = None
 
         self.__addStructure()
+        self.__addStructureVisual()
         self.__addPulleys()
         self.__addPlatform()
         self.__addDeformableCables()
@@ -59,40 +63,67 @@ class Caroca:
                                  showIndices=False, showIndicesScale=0.1)
         self.structure.addObject('FixedConstraint', fixAll=True)
 
+    def __addStructureVisual(self):
         visuals = self.structure.addChild('Visuals')
-        t = self.params.structure.thickness
-        max = [
-            [-t, -t, -self.params.structure.width - t],
-            [-self.params.structure.length - t, -t, t],
-            [self.params.structure.length + t, -t, -t],
-            [t, -t, self.params.structure.width + t],
-            [-t, t, -self.params.structure.width - t],
-            [-self.params.structure.length - t, t, t],
-            [self.params.structure.length + t, t, -t],
-            [t, t, self.params.structure.width + t]
-        ]
-        for i in range(8):
-            visual = visuals.addChild('VisualTB' + str(i))
-            visual.addObject('RegularGridTopology', min=[0, 0, 0], max=max[i])
-            visual.addObject('OglModel', color=[0.1, 0.1, 0.1, 1])
-            visual.addObject('RigidMapping', index=i)
 
-        max = [
-            [-t, - self.params.structure.height - t, -t],
-            [-t, - self.params.structure.height - t, t],
-            [t, - self.params.structure.height - t, -t],
-            [t, - self.params.structure.height - t, t]
-        ]
-        for i in range(4):
-            visual = visuals.addChild('Visual' + str(i))
-            visual.addObject('RegularGridTopology', min=[0, 0, 0], max=max[i])
-            visual.addObject('OglModel', color=[0.1, 0.1, 0.1, 1])
-            visual.addObject('RigidMapping', index=i)
+        if self.params.structure.thickness > 0:  # Caroca structure
+            t = self.params.structure.thickness
+            max = [
+                [-t, -t, -self.params.structure.width - t],
+                [-self.params.structure.length - t, -t, t],
+                [self.params.structure.length + t, -t, -t],
+                [t, -t, self.params.structure.width + t],
+                [-t, t, -self.params.structure.width - t],
+                [-self.params.structure.length - t, t, t],
+                [self.params.structure.length + t, t, -t],
+                [t, t, self.params.structure.width + t]
+            ]
+            for i in range(8):
+                visual = visuals.addChild('VisualTB' + str(i))
+                visual.addObject('RegularGridTopology', min=[0, 0, 0], max=max[i])
+                visual.addObject('OglModel', color=[0.1, 0.1, 0.1, 1])
+                visual.addObject('RigidMapping', index=i)
+
+            max = [
+                [-t, - self.params.structure.height - t, -t],
+                [-t, - self.params.structure.height - t, t],
+                [t, - self.params.structure.height - t, -t],
+                [t, - self.params.structure.height - t, t]
+            ]
+            for i in range(4):
+                visual = visuals.addChild('Visual' + str(i))
+                visual.addObject('RegularGridTopology', min=[0, 0, 0], max=max[i])
+                visual.addObject('OglModel', color=[0.1, 0.1, 0.1, 1])
+                visual.addObject('RigidMapping', index=i)
+        else:
+
+            dx = self.params.structure.length / 2.
+            dy = self.params.structure.height / 2.
+            dz = self.params.structure.width / 2.
+            nbVisuals = 4
+            filename = 'support.stl'
+
+            if dz < 2:
+                dz = 0
+                nbVisuals = 2
+                filename = 'doublesupport.stl'
+
+            for i in range(nbVisuals):
+                Support(self.modelling,
+                        translation=[[dx, dy, dz],
+                                     [-dx, dy, dz],
+                                     [dx, dy, -dz],
+                                     [-dx, dy, -dz]][i],
+                        rotation=[0, [180, 0][i % 2], 0],
+                        name="SupportVisu" + str(i),
+                        filename=filename
+                        )
 
     def __addPulleys(self):
         self.pulleys = self.structure.addChild('Pulleys')
 
         dx = -self.params.structure.thickness
+        dy = self.params.structure.height
         shift = -self.params.pulley.shift
         r = self.params.pulley.radius
         self.positionsPulley = [[dx, dx - r, dx + shift],
@@ -107,10 +138,10 @@ class Caroca:
                                 [-dx, dx - r, -dx - shift],
                                 [-dx - shift, dx - r, -dx]]
 
-        a = [-0.3 - pi, -0.3 - pi,
-             0.3 + pi, 0.3 + pi,
-             0.3, 0.3,
-             -0.3, -0.3]
+        for i in range(8):
+            self.positionsPulley[i][1] -= dy * (self.params.structure.pulleysUD[i] == "down")
+
+        a = self.params.structure.pulleysorientations
         self.pulleys.addObject('MechanicalObject', template='Rigid3',
                                position=[self.positionsPulley[i] + list(Quat.createFromAxisAngle([0., 1., 0.], a[i]))
                                          for i in range(8)],
@@ -248,7 +279,7 @@ def createScene(rootnode):
     addSolvers(simulation, firstOrder=False, rayleighStiffness=0.2)
     rootnode.VisualStyle.displayFlags = "showInteractionForceFields showCollisionModels"
 
-    caroca = Caroca(modelling, simulation, cableModel='beam')
+    caroca = System(modelling, simulation, cableModel='beam')
     for i, cable in enumerate(caroca.cables.children):
         cable.RigidBase.addObject('RestShapeSpringsForceField', points=[0], stiffness=1e12)
 

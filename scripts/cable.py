@@ -27,6 +27,7 @@ class Cable:
         self.attachNode = attachNode
         self.attachIndex = attachIndex
         self.cableModel = cableModel
+        self.name = name
         self.beam = self.__addCable(positions, length, name)
 
     def __addCable(self, positions, length, name):
@@ -40,7 +41,7 @@ class Cable:
 
         beam.node.addData(name='length', value=length, type='float', help="cable's length")
 
-        distance = beam.base.addChild('Distance')
+        distance = beam.base.addChild('Distance' + self.name)
         self.attachNode.addChild(distance)
         distance.addObject('MechanicalObject', template='Rigid3', rest_position=[0, 0, 0, 0, 0, 0, 1])
         distance.addObject('RestShapeSpringsForceField', points=0, stiffness=2e12, angularStiffness=0, drawSpring=True)
@@ -59,10 +60,12 @@ def createScene(rootnode):
     import params
 
     settings, modelling, simulation = addHeader(rootnode)
-    addSolvers(simulation, firstOrder=False)
+    addSolvers(simulation, firstOrder=False, rayleighStiffness=0.2)
     rootnode.VisualStyle.displayFlags = "showInteractionForceFields showCollisionModels"
+    rootnode.addObject('VisualGrid', plane='z', size=4, nbSubdiv=40)
+    rootnode.addObject('VisualGrid', plane='z', size=4, nbSubdiv=4, thickness=2)
 
-    length = 5
+    length = 2
 
     load = simulation.addChild('Load')
     load.addObject('MechanicalObject', position=[length, 0, 0, 0, 0, 0, 1], template='Rigid3',

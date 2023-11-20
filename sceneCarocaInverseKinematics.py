@@ -1,4 +1,4 @@
-from scripts.caroca import Caroca
+from scripts.system import System
 
 
 def createScene(rootnode):
@@ -8,6 +8,6 @@ def createScene(rootnode):
     addSolvers(simulation, firstOrder=False)
     rootnode.VisualStyle.displayFlags = "showInteractionForceFields showCollisionModels"
 
-    Caroca(modelling, simulation, cableModel='beam', inverse=True)
+    System(modelling, simulation, cableModel='beam', inverse=True)
 
     rootnode.addObject('VisualGrid', size=10, nbSubdiv=100)
