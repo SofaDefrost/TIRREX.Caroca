@@ -41,15 +41,17 @@ class Cable:
 
         beam.node.addData(name='length', value=length, type='float', help="cable's length")
 
-        distance = beam.base.addChild('Distance' + self.name)
+        distance = beam.rod.addChild('Difference' + self.name)
         self.attachNode.addChild(distance)
-        distance.addObject('MechanicalObject', template='Rigid3', rest_position=[0, 0, 0, 0, 0, 0, 1])
-        distance.addObject('RestShapeSpringsForceField', points=0, stiffness=2e12, angularStiffness=0, drawSpring=True)
-        distance.addObject('RigidDistanceMapping',
-                           input1=self.attachNode.MechanicalObject.getLinkPath(),
-                           input2=beam.deformable.MechanicalObject.getLinkPath(),
-                           output=distance.MechanicalObject.getLinkPath(),
-                           first_point=self.attachIndex, second_point=len(positions) - 2)
+        distance.addObject('MechanicalObject', template='Rigid3', position=[0, 0, 0, 0, 0, 0, 0])
+        distance.addObject('RestShapeSpringsForceField', points=[0], stiffness=2e12, angularStiffness=0)
+        distance.addObject('BeamProjectionDifferenceMultiMapping',
+                           input1=self.attachNode.MechanicalObject.linkpath,
+                           input2=beam.rod.MechanicalObject.linkpath,
+                           interpolationInput2=beam.rod.BeamInterpolation.linkpath,
+                           output=distance.MechanicalObject.linkpath,
+                           directions=[1, 1, 1, 0, 0, 0, 0],
+                           indicesInput1=self.attachIndex)
 
         return beam
 
@@ -68,7 +70,9 @@ def createScene(rootnode):
     length = 2
 
     load = simulation.addChild('Load')
-    load.addObject('MechanicalObject', position=[length, 0, 0, 0, 0, 0, 1], template='Rigid3',
+    load.addObject('MechanicalObject', template='Rigid3',
+                   position=[[length, 0, 0, 0, 0, 0, 1],
+                             [length, 1, 0, 0, 0, 0, 1]],
                    showObject=True, showObjectScale=0.1)
     load.addObject('UniformMass', totalMass=10)
 
@@ -80,7 +84,14 @@ def createScene(rootnode):
     cable = Cable(modelling, cables,
                   positions=positions, length=length,
                   attachNode=load, attachIndex=0,
-                  cableModel="beam", name="Cable").beam
+                  cableModel="beam", name="CableBeam").beam
     cable.base.addObject('FixedConstraint', indices=[0])
 
-    rootnode.addObject(CablesGUI(cables=cables))
+    positions = [[dx * i, 1, 0, 0, 0, 0, 1] for i in range(nbSections + 1)]
+    cable = Cable(modelling, cables,
+                  positions=positions, length=length,
+                  attachNode=load, attachIndex=1,
+                  cableModel="cosserat", name="CableCosserat").beam
+    cable.base.addObject('FixedConstraint', indices=[0])
+
+    # rootnode.addObject(CablesGUI(cables=cables))

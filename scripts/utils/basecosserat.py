@@ -4,7 +4,7 @@ from math import pi
 
 class BaseCosserat(BaseObject):
     """
-    Base rod with a passive and an orientable part, based on Cosserat beam, and with a visual and a collision model.
+    Base rod, based on Cosserat beam, and with a visual and a collision model.
     """
 
     deformabletemplate = 'Vec3'
@@ -43,14 +43,16 @@ class BaseCosserat(BaseObject):
         self.node.addData(name="indexExtremity", type='int', value=nbPoints - 1)
 
     def __addCosseratRod(self):
-        rod = self.base.addChild('Rod' + self.name)
+        rod = self.base.addChild('Rod')
         self.deformable.addChild(rod)
 
         nbSections = self.params.nbSections
         nbPoints = nbSections + 1
         dx = self.length / nbSections
 
+        rod.addObject('EdgeSetTopologyContainer', position=self.positions, edges=[[i, i+1] for i in range(nbSections)])
         rod.addObject('MechanicalObject', template='Rigid3', position=self.positions)
+        rod.addObject('BeamInterpolation')
 
         totalMass = self.params.density * self.length * self.params.radius * self.params.radius * pi
         inertiaMatrix = [[1 / 2 * self.params.radius*self.params.radius, 0, 0],

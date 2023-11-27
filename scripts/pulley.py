@@ -119,7 +119,8 @@ def createScene(rootnode):
     rootnode.addObject('VisualGrid', plane='z', size=4, nbSubdiv=4, thickness=2, enable=False)
     rootnode.gravity.value = [0, -9.810, 0]
 
-    onlyPulley = True
+    ONLYPULLEY = False
+    CABLEMODEL = "beam"  # "cosserat" or "beam"
 
     length = 2
     nbSections = params.CableParameters.nbSections
@@ -133,7 +134,8 @@ def createScene(rootnode):
     pulley.Rigid.Visual2.addObject("VisualStyle", displayFlags='showWireframe')
     slidingpoints = pulley.Rigid.SlidingPoints
 
-    if not onlyPulley:
+    if not ONLYPULLEY:
+        # Load
         load = simulation.addChild('Load')
         load.addObject('MechanicalObject', position=[dx * 3, 0, 0, 0, 0, 0, 1], template='Rigid3',
                        showObject=False, showObjectScale=0.05)
@@ -144,6 +146,7 @@ def createScene(rootnode):
                        scale3d=[0.1, 0.1, 0.1], translation=[0, -0.1, 0])
         visu.addObject('RigidMapping')
 
+        # Cable
         positions = [[- dx * 3, dx * i, 0, 0, 0, 0.707, 0.707] for i in range(floor(nbSections / 2) - 1)]
         positions += [[-0.03, length / 2 - 0.02, 0, 0, 0, 0, 1]]
         positions += [[0, length / 2, 0, 0, 0, 0, 1]]
@@ -154,10 +157,10 @@ def createScene(rootnode):
         cable = Cable(modelling, cables,
                       positions=positions, length=length,
                       attachNode=load, attachIndex=0,
-                      cableModel='beam', name="Cable").beam
+                      cableModel=CABLEMODEL, name="Cable").beam
         cable.base.addObject('FixedConstraint', indices=[0])
-        pulley.PulleyController.cable = cable.node
 
+        # Cable pulley interaction
         difference = cable.rod.addChild('Difference')
         slidingpoints.addChild(difference)
 
@@ -172,8 +175,9 @@ def createScene(rootnode):
                              interpolationInput2=cable.rod.BeamInterpolation.linkpath,
                              output=difference.getMechanicalState().linkpath,
                              draw=False, drawSize=0.1)
-
-        rootnode.addObject(CablesGUI(cables=cables))
+        if CABLEMODEL == "beam":
+            pulley.PulleyController.cable = cable.node
+            rootnode.addObject(CablesGUI(cables=cables))
     else:  # Animate pulley
         def animation(factor, target, value, index, direction, startTime=0):
             if factor > 0:
@@ -185,5 +189,5 @@ def createScene(rootnode):
         targetObject = pulley.getMechanicalState()
         animate(animation, {'target': targetObject, 'value': pi, 'index': 0, 'direction': 0, 'startTime': 0},
                 duration=2, mode='pingpong')
-        animate(animation, {'target': targetObject, 'value': 2*pi, 'index': 1, 'direction': 0, 'startTime': 0},
+        animate(animation, {'target': targetObject, 'value': 2 * pi, 'index': 1, 'direction': 0, 'startTime': 0},
                 duration=2, mode='pingpong')
