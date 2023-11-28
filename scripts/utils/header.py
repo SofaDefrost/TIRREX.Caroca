@@ -1,4 +1,4 @@
-def addHeader(rootnode, multithreading=False, inverse=False):
+def addHeader(rootnode, multithreading=False, inverse=False, withCollision=False):
     """
     Adds to rootnode the default headers for a simulation with contact. Also adds and returns three nodes:
         - Settings
@@ -8,6 +8,8 @@ def addHeader(rootnode, multithreading=False, inverse=False):
     Args:
         rootnode:
         multithreading:
+        inverse:
+        withCollision:
 
     Usage:
         addHeader(rootnode)
@@ -53,10 +55,13 @@ def addHeader(rootnode, multithreading=False, inverse=False):
     rootnode.addObject('VisualStyle')
     rootnode.addObject('CollisionPipeline')
     rootnode.addObject("DefaultVisualManagerLoop")
-    rootnode.addObject('RuleBasedContactManager', responseParams='mu=0.8', response='FrictionContactConstraint')
-    rootnode.addObject('BruteForceBroadPhase')
-    rootnode.addObject('BVHNarrowPhase')
-    rootnode.addObject('LocalMinDistance', alarmDistance=0.05, contactDistance=0.01)
+
+    if withCollision:
+        rootnode.addObject('RuleBasedContactManager', responseParams='mu=0.8', response='FrictionContactConstraint')
+        rootnode.addObject('BruteForceBroadPhase')
+        rootnode.addObject('BVHNarrowPhase')
+        rootnode.addObject('LocalMinDistance', alarmDistance=0.05, contactDistance=0.01)
+
     rootnode.addObject('FreeMotionAnimationLoop', parallelCollisionDetectionAndFreeMotion=multithreading,
                        parallelODESolving=multithreading)
     if inverse:
@@ -76,14 +81,14 @@ def addHeader(rootnode, multithreading=False, inverse=False):
     return settings, modelling, simulation
 
 
-def addSolvers(node, template='CompressedRowSparseMatrixd', rayleighMass=0., rayleighStiffness=0., firstOrder=False,
-               cuda=False, iterative=False):
+def addSolvers(node, template='CompressedRowSparseMatrixd', rayleighMass=0., rayleighStiffness=0.,
+               firstOrder=False, cuda=False, iterative=False):
     """
-    Adds solvers (EulerImplicitSolver, LDLSolver, GenericConstraintCorrection) to the given node.
+    Adds solvers (EulerImplicitSolver, SparseLDLSolver, GenericConstraintCorrection) to the given node.
 
     Args:
         node:
-        template: for the LDLSolver
+        template: for the SparseLDLSolver
         rayleighMass:
         rayleighStiffness:
         firstOrder: for the implicit scheme

@@ -18,8 +18,10 @@ class System:
 
     params = Parameters()
 
-    def __init__(self, modelling, simulation, name='System', position=[0, 0, 0, 0, 0, 0, 1], cableModel='beam',
+    def __init__(self, modelling, simulation, name='System',
+                 position=[0, 0, 0, 0, 0, 0, 1], cableModel='beam',
                  inverse=False):
+
         self.modelling = modelling
         self.simulation = simulation
         self.name = name
@@ -34,9 +36,6 @@ class System:
         self.__addPlatform()
         self.__addDeformableCables()
 
-        if self.cableModel == 'beam':
-            self.addController()
-
         if self.inverse:
             self.__addEffector()
 
@@ -48,14 +47,14 @@ class System:
         dy = self.params.structure.height / 2. + self.params.structure.thickness
         dz = self.params.structure.width / 2. + self.params.structure.thickness
         position = [[dx, dy, dz],
-                    [dx, dy, -dz],
-                    [-dx, dy, dz],
-                    [-dx, dy, -dz],
-
                     [dx, -dy, dz],
+                    [dx, dy, -dz],
                     [dx, -dy, -dz],
-                    [-dx, -dy, dz],
-                    [-dx, -dy, -dz]]
+
+                    [-dx, dy, -dz],
+                    [-dx, -dy, -dz],
+                    [-dx, dy, dz],
+                    [-dx, -dy, dz]]
 
         self.structure.addObject('MechanicalObject', template='Rigid3',
                                  position=[pos + [0, 0, 0, 1] for pos in position], showObject=False,
@@ -69,14 +68,14 @@ class System:
         if self.params.structure.thickness > 0:  # Caroca structure
             t = self.params.structure.thickness
             max = [
-                [-t, -t, -self.params.structure.width - t],
+                [-t,                                -t, -self.params.structure.width - t],
+                [-self.params.structure.length - t, t,  -t],
                 [-self.params.structure.length - t, -t, t],
-                [self.params.structure.length + t, -t, -t],
-                [t, -t, self.params.structure.width + t],
-                [-t, t, -self.params.structure.width - t],
-                [-self.params.structure.length - t, t, t],
-                [self.params.structure.length + t, t, -t],
-                [t, t, self.params.structure.width + t]
+                [-t,                                t,  self.params.structure.width + t],
+                [t,                                 -t, self.params.structure.width + t],
+                [self.params.structure.length + t,  t,  t],
+                [self.params.structure.length + t,  -t, -t],
+                [t,                                 t,  -self.params.structure.width - t]
             ]
             for i in range(8):
                 visual = visuals.addChild('VisualTB' + str(i))
@@ -86,15 +85,15 @@ class System:
 
             max = [
                 [-t, - self.params.structure.height - t, -t],
-                [-t, - self.params.structure.height - t, t],
-                [t, - self.params.structure.height - t, -t],
-                [t, - self.params.structure.height - t, t]
+                [-t, -self.params.structure.height - t, t],
+                [t, - self.params.structure.height - t, t],
+                [t, - self.params.structure.height - t, -t]
             ]
             for i in range(4):
                 visual = visuals.addChild('Visual' + str(i))
                 visual.addObject('RegularGridTopology', min=[0, 0, 0], max=max[i])
                 visual.addObject('OglModel', color=[0.1, 0.1, 0.1, 1])
-                visual.addObject('RigidMapping', index=i)
+                visual.addObject('RigidMapping', index=i * 2)
         else:
 
             dx = self.params.structure.length / 2.
@@ -123,30 +122,32 @@ class System:
         self.pulleys = self.structure.addChild('Pulleys')
 
         dx = -self.params.structure.thickness
-        dy = self.params.structure.height
         shift = -self.params.pulley.shift
         r = self.params.pulley.radius
-        self.positionsPulley = [[dx, dx - r, dx + shift],
-                                [dx + shift, dx - r, dx],
+        dy = self.params.structure.height - dx
+        self.positionsPulley = [[dx,          -r,  dx + shift],
+                                [dx + shift,   r,  dx],
 
-                                [dx, dx - r, -dx - shift],
-                                [dx + shift, dx - r, -dx],
+                                [dx,          -r,  -dx - shift],
+                                [dx + shift,   r,  -dx],
 
-                                [-dx, dx - r, dx + shift],
-                                [-dx - shift, dx - r, dx],
+                                [-dx,         -r, -dx - shift],
+                                [-dx - shift,  r, -dx],
 
-                                [-dx, dx - r, -dx - shift],
-                                [-dx - shift, dx - r, -dx]]
+                                [-dx,         -r, dx + shift],
+                                [-dx - shift,  r, dx]]
 
+        structure = ['up', 'down', 'up', 'down', 'up', 'down', 'up', 'down']
         for i in range(8):
-            self.positionsPulley[i][1] -= dy * (self.params.structure.pulleysUD[i] == "down")
+            if structure[i] != self.params.structure.pulleysUD[i]:
+                self.positionsPulley[i][1] += [1, -1][self.params.structure.pulleysUD[i] == "down"] * dy
 
         a = self.params.structure.pulleysorientations
         self.pulleys.addObject('MechanicalObject', template='Rigid3',
                                position=[self.positionsPulley[i] + list(Quat.createFromAxisAngle([0., 1., 0.], a[i]))
                                          for i in range(8)],
-                               showObject=False)
-        self.pulleys.addObject('RigidMapping', rigidIndexPerPoint=[0, 0, 1, 1, 2, 2, 3, 3], globalToLocalCoords=False)
+                               showObject=False, showIndices=False)
+        self.pulleys.addObject('RigidMapping', rigidIndexPerPoint=list(range(8)), globalToLocalCoords=False)
 
         for i in range(8):
             Pulley(self.pulleys,
@@ -162,14 +163,14 @@ class System:
         self.corners = self.platform.addChild('Corners')
         dx = self.params.platform.side / 2.
         position = [[dx, dx, dx],
-                    [dx, dx, -dx],
-                    [-dx, dx, dx],
-                    [-dx, dx, -dx],
-
                     [dx, -dx, dx],
+                    [dx, dx, -dx],
                     [dx, -dx, -dx],
-                    [-dx, -dx, dx],
-                    [-dx, -dx, -dx]]
+
+                    [-dx, dx, -dx],
+                    [-dx, -dx, -dx],
+                    [-dx, dx, dx],
+                    [-dx, -dx, dx]]
         self.corners.addObject('MechanicalObject', template='Rigid3', position=[pos + [0, 0, 0, 1] for pos in position],
                                showObject=False, showObjectScale=0.1,
                                showIndices=False, showIndicesScale=0.1)
@@ -204,19 +205,18 @@ class System:
         nbCables = 8
         positionStructure = self.structure.MechanicalObject.position.value
         positionBase = list(np.copy(self.corners.MechanicalObject.position.value))
+        shift = (self.params.pulley.radius + self.params.cable.radius) / 2.
 
         if self.cableModel == 'beam':  # TODO: remove once we have the sliding actuator
             self.structure.addData(name='velocity', type='float', help='cable deployment velocity', value=0)
             self.structure.addData(name='displacement', type='float', help='cable deployment displacement', value=0)
 
-        pulleyId = [0, 2, 4, 6, 1, 3, 5, 7]
-        structureId = [0, 1, 2, 3, 0, 1, 2, 3]
         self.cables = self.simulation.addChild('Cables')
         for i in range(nbCables):
-            positionPulley = vadd(positionStructure[structureId[i]], self.positionsPulley[pulleyId[i]])
-            positionPulley[0] += [1, 1, -1, -1, 1, 1, -1, -1][i] * - 0.04
+            positionPulley = vadd(positionStructure[i], self.positionsPulley[i])
+            positionPulley[0] += [1, 1, 1, 1, -1, -1, -1, -1][i] * - shift
             positionPulley[1] += self.params.pulley.radius
-            direction = Vec3(vsub(positionBase[i], positionPulley))
+            direction = Vec3(vsub(positionBase[self.params.structure.cornersOrder[i]], positionPulley))
 
             totalLength = self.params.cable.length
             length1 = direction.getNorm()
@@ -239,14 +239,15 @@ class System:
             positions += [[positionPulley[0] + direction[0] * dx * i,
                            positionPulley[1] + direction[1] * dx * i,
                            positionPulley[2] + direction[2] * dx * i]
-                          + list(q) for i in range(nbSections1 + 1)]
+                          + list(q) for i in range(nbSections1)]
+            positions += [positionBase[self.params.structure.cornersOrder[i]]]
 
             beam = Cable(self.modelling, self.cables,
                          positions=positions, length=totalLength,
-                         attachNode=self.corners, attachIndex=i,
+                         attachNode=self.corners, attachIndex=self.params.structure.cornersOrder[i],
                          cableModel=self.cableModel, name="Cable" + str(i)).beam
 
-            slidingpoints = self.pulleys.getChild('Pulley' + str(pulleyId[i])).Rigid.SlidingPoints
+            slidingpoints = self.pulleys.getChild('Pulley' + str(i)).Rigid.SlidingPoints
 
             difference = beam.rod.addChild('Difference')
             slidingpoints.addChild(difference)
@@ -280,7 +281,7 @@ def createScene(rootnode):
     rootnode.VisualStyle.displayFlags = "showInteractionForceFields showCollisionModels"
 
     caroca = System(modelling, simulation, cableModel='beam')
-    for i, cable in enumerate(caroca.cables.children):
-        cable.RigidBase.addObject('RestShapeSpringsForceField', points=[0], stiffness=1e12)
+    # for i, cable in enumerate(caroca.cables.children):
+    #     cable.RigidBase.addObject('RestShapeSpringsForceField', points=[0], stiffness=1e12)
 
     rootnode.addObject('VisualGrid', size=10, nbSubdiv=100)

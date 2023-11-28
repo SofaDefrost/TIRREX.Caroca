@@ -11,8 +11,19 @@ def createScene(rootnode):
     params.structure.length = 28.45
     params.structure.thickness = 0
 
-    params.cable.nbSections *= 4
-    params.cable.length *= 4
+    defaultNbSections = 80
+    params.cable.nbSections = 4 * defaultNbSections
+
+    defaultLength = 5
+    params.cable.length = 4 * defaultLength
+
+    params.structure.pulleysorientations = [0, 0, 0, 0,
+                                            0, 0, 0, 0]
+
+    params.structure.pulleysUD = ["up", "down", "up", "down",
+                                  "up", "down", "up", "down"]
+
+    params.structure.cornersOrder = [3, 1, 2, 0, 7, 4, 6, 4]
 
     settings, modelling, simulation = addHeader(rootnode)
     addSolvers(simulation, firstOrder=False, rayleighStiffness=0.2)

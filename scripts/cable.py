@@ -5,7 +5,7 @@ from scripts.utils.basecosserat import BaseCosserat
 
 class Cable:
     """
-    Cable object
+    Cable object which can be attached to another object at one of its extremity.
 
     modelling: node
     simulation: node
@@ -80,6 +80,7 @@ def createScene(rootnode):
 
     nbSections = params.CableParameters.nbSections
     dx = length / nbSections
+
     positions = [[dx * i, 0, 0, 0, 0, 0, 1] for i in range(nbSections + 1)]
     cable = Cable(modelling, cables,
                   positions=positions, length=length,

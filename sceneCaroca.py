@@ -1,4 +1,5 @@
 from scripts.system import System
+from params import Parameters
 
 
 def createScene(rootnode):
@@ -7,6 +8,9 @@ def createScene(rootnode):
     settings, modelling, simulation = addHeader(rootnode)
     addSolvers(simulation, firstOrder=False, rayleighStiffness=0.2)
     rootnode.VisualStyle.displayFlags = "showInteractionForceFields showCollisionModels"
+
+    params = Parameters()
+    params.platform.mass = 200
 
     caroca = System(modelling, simulation, cableModel='beam')
     for i, cable in enumerate(caroca.cables.children):

@@ -35,12 +35,17 @@ class StructureParameters:  # default values correspond to Caroca structure
 
     thickness: float = 0.2  # for Caroca structure
 
-    pulleysorientations: list = field(default_factory=lambda: [- 0.3 - pi, - 0.3 - pi, 0.3 + pi, 0.3 + pi,
-                                                               0.3, 0.3, -0.3, -0.3])
+    # Orientation of each pulley in radian
+    pulleysorientations: list = field(default_factory=lambda: [- 0.3 - pi, - 0.3 - pi,
+                                                               0.3 + pi, 0.3 + pi,
+                                                               -0.3, -0.3,
+                                                               0.3, 0.3])
+    # Position of the pulley on the structure ('up' or 'down')
     pulleysUD: list = field(default_factory=lambda: ['up', 'up', 'up', 'up',
                                                      'up', 'up', 'up', 'up'])
-    pulleysLR: list = field(default_factory=lambda: ['left', 'left', 'right', 'right',
-                                                     'left', 'left', 'right', 'right'])
+    # For each pulley, connect the cable to the corresponding corner of the platform
+    # (see the README.md for the corresponding numbering)
+    cornersOrder: list = field(default_factory=lambda: [0, 1, 2, 3, 4, 5, 6, 7])
 
 
 @dataclass

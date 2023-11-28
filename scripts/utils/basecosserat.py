@@ -4,7 +4,7 @@ from math import pi
 
 class BaseCosserat(BaseObject):
     """
-    Base rod, based on Cosserat beam, and with a visual and a collision model.
+    Base rod, based on Cosserat. With a visual and a collision model.
     """
 
     deformabletemplate = 'Vec3'
@@ -38,12 +38,10 @@ class BaseCosserat(BaseObject):
                                   poissonRatio=self.params.poissonRatio,
                                   radius=self.params.radius,
                                   length=[dx] * nbSections)
-
-        self.rod = self.__addCosseratRod()
         self.node.addData(name="indexExtremity", type='int', value=nbPoints - 1)
 
-    def __addCosseratRod(self):
         rod = self.base.addChild('Rod')
+        self.rod = rod
         self.deformable.addChild(rod)
 
         nbSections = self.params.nbSections

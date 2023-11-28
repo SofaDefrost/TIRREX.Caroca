@@ -44,8 +44,49 @@ Run the simulation. In a terminal:
 
 ### Parameters
 
-The geometric and mechanical parameters can be changed from the file `params.py`.
+The geometric and mechanical parameters can be changed from the file `params.py` (for global changes), 
+or directly in the scene file (for local changes):
 
+```python
+def createScene(rootnode):
+    from scripts.utils.header import addHeader, addSolvers
+
+    params = Parameters()
+    params.structure.height = 9.5
+    params.structure.width = 1
+    params.structure.length = 27.78
+    params.structure.thickness = 0
+
+    params.cable.nbSections *= 3
+    params.cable.length *= 3
+
+    # Orientation of each pulley in radian
+    params.structure.pulleysorientations = [0, 0, 0, 0,
+                                            0, 0, 0, 0]
+
+    # Position of the pulley on the structure ('up' or 'down')
+    params.structure.pulleysUD = ["up", "down", "up", "down",
+                                  "up", "down", "up", "down"]
+
+    # For each pulley, connect the cable to the corresponding corner of the platform
+    # (see the README.md for the corresponding numbering)
+    params.structure.cornersOrder = [2, 3, 1, 0, 6, 7, 5, 4]
+
+    settings, modelling, simulation = addHeader(rootnode)
+    addSolvers(simulation, firstOrder=False, rayleighStiffness=0.2)
+    rootnode.VisualStyle.displayFlags = "showInteractionForceFields showCollisionModels"
+
+    system = System(modelling, simulation, cableModel='beam')
+    for i, cable in enumerate(system.cables.children):
+        cable.RigidBase.addObject('RestShapeSpringsForceField', points=[0], stiffness=1e12)
+
+```
+
+Numbering of the pulleys, and corners of the platform follows the image bellow : 
+
+<body>
+<img src="media/numbering.png" width="80%" class='center'/>
+</body>
 
 ## To do
 

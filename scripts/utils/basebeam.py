@@ -59,7 +59,7 @@ class BeamController(Sofa.Core.Controller):
 
 class BaseBeam(BaseObject):
     """
-    Base rod with a retracted part, based on beam theory, and with a visual and a collision model.
+    Base rod with a retracted part, based on beam theory. With a visual and a collision model.
     """
 
     deformabletemplate = 'Rigid3'
