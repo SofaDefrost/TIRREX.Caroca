@@ -1,4 +1,5 @@
 from scripts.utils.baseobject import BaseObject
+from splib3.numerics import Quat
 from math import pi
 
 
@@ -32,7 +33,18 @@ class BaseCosserat(BaseObject):
         self.base.addObject('MechanicalObject', template='Rigid3', position=self.positions[0])
 
         self.deformable = self.node.addChild('Deformable')
-        self.deformable.addObject('MechanicalObject', position=[[0, 0, 0] * nbSections])
+
+        # Convert Rigid3 orientation description to Cosserat bending description
+        # [[torsion strain, y_bending strain, z_bending strain]]
+        strain = []
+        for i in range(len(self.positions) - 1):
+            q1 = Quat(self.positions[i][3:7])
+            q2 = Quat(self.positions[i + 1][3:7])
+            q = q1.rotateFromQuat(q2.getInverse())
+            angles = q.getEulerAngles()  # TODO: angles to strain
+            strain.append([0., 0., 0.])
+
+        self.deformable.addObject('MechanicalObject', position=strain)
         self.deformable.addObject('BeamHookeLawForceField',
                                   youngModulus=self.params.youngModulus,
                                   poissonRatio=self.params.poissonRatio,
@@ -48,8 +60,12 @@ class BaseCosserat(BaseObject):
         nbPoints = nbSections + 1
         dx = self.length / nbSections
 
-        rod.addObject('EdgeSetTopologyContainer', position=self.positions, edges=[[i, i+1] for i in range(nbSections)])
-        rod.addObject('MechanicalObject', template='Rigid3', position=self.positions)
+        rod.addObject('EdgeSetTopologyContainer',
+                      position=[pos[0:3] for pos in self.positions],
+                      edges=[[i, i+1] for i in range(nbSections)])
+        rod.addObject('MechanicalObject', template='Rigid3',
+                      position=[pos[0:3] + [0., 0., 0., 1.] for pos in self.positions]
+                      )
         rod.addObject('BeamInterpolation')
 
         totalMass = self.params.density * self.length * self.params.radius * self.params.radius * pi

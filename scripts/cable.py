@@ -58,14 +58,12 @@ class Cable:
 
 def createScene(rootnode):
     from scripts.utils.header import addHeader, addSolvers
-    from gui import CablesGUI
     import params
+    from math import pi, cos, sin
 
     settings, modelling, simulation = addHeader(rootnode)
     addSolvers(simulation, firstOrder=False, rayleighStiffness=0.2)
-    rootnode.VisualStyle.displayFlags = "showInteractionForceFields showCollisionModels"
-    rootnode.addObject('VisualGrid', plane='z', size=4, nbSubdiv=40)
-    rootnode.addObject('VisualGrid', plane='z', size=4, nbSubdiv=4, thickness=2)
+    rootnode.VisualStyle.displayFlags = "showInteractionForceFields"
 
     length = 2
 
@@ -74,7 +72,7 @@ def createScene(rootnode):
                    position=[[length, 0, 0, 0, 0, 0, 1],
                              [length, 1, 0, 0, 0, 0, 1]],
                    showObject=True, showObjectScale=0.1)
-    load.addObject('UniformMass', totalMass=10)
+    load.addObject('UniformMass', totalMass=100)
 
     cables = simulation.addChild("Cables")
 
@@ -88,11 +86,13 @@ def createScene(rootnode):
                   cableModel="beam", name="CableBeam").beam
     cable.base.addObject('FixedConstraint', indices=[0])
 
-    positions = [[dx * i, 1, 0, 0, 0, 0, 1] for i in range(nbSections + 1)]
+    angle = pi / 4
+    # positions = [[dx * i, 1., 0., 0., 0., sin(angle/2), cos(angle/2)] for i in range(nbSections + 1)]
+    positions = [[dx * i, 1., 0., 0., 0., 0., 1.] for i in range(nbSections + 1)]
     cable = Cable(modelling, cables,
                   positions=positions, length=length,
                   attachNode=load, attachIndex=1,
                   cableModel="cosserat", name="CableCosserat").beam
     cable.base.addObject('FixedConstraint', indices=[0])
 
-    # rootnode.addObject(CablesGUI(cables=cables))
+

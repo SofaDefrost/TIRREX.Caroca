@@ -57,15 +57,13 @@ class Pulley:
                         showIndices=False, showIndicesScale=0.1)
 
         slidingpoints = rigid.addChild('SlidingPoints')
-        slidingpoints.addObject('MechanicalObject', template='Rigid3', showObject=False, showObjectScale=0.01,
+        slidingpoints.addObject('MechanicalObject', template='Rigid3', showObject=True, showObjectScale=0.01,
                                 position=[
                                     [-r, -0.1, 0, 0, 0, sin(pi / 4), cos(pi / 4)],
                                     [-r, 0, 0, 0, 0, sin(pi / 4), cos(pi / 4)],
-                                    [r * cos(3 * pi / 4), r * sin(3 * pi / 4), 0, 0, 0,
-                                     sin(pi / 8), cos(pi / 8)],
+                                    [r * cos(3 * pi / 4), r * sin(3 * pi / 4), 0, 0, 0, sin(pi / 8), cos(pi / 8)],
                                     [0, r, 0, 0, 0, 0, 1],
-                                    [r * cos(pi / 4), r * sin(pi / 4), 0, 0, 0, -sin(pi / 8),
-                                     cos(pi / 8)]],
+                                    [r * cos(pi / 4), r * sin(pi / 4), 0, 0, 0, -sin(pi / 8), cos(pi / 8)]],
                                 translation=[r, 0, 0]
                                 )
         slidingpoints.addObject('RigidMapping', index=1, globalToLocalCoords=False)
@@ -109,12 +107,12 @@ def createScene(rootnode):
     from scripts.utils.header import addHeader, addSolvers
     from scripts.cable import Cable
     from gui import CablesGUI
-    import params
+    from params import Parameters
 
     settings, modelling, simulation = addHeader(rootnode)
     addSolvers(simulation, rayleighStiffness=0.2, firstOrder=False)
     rootnode.addObject(AnimationManager(rootnode))
-    rootnode.VisualStyle.displayFlags = "showInteractionForceFields showCollisionModels"
+    rootnode.VisualStyle.displayFlags = "showInteractionForceFields"
     rootnode.addObject('VisualGrid', plane='z', size=4, nbSubdiv=40, enable=False)
     rootnode.addObject('VisualGrid', plane='z', size=4, nbSubdiv=4, thickness=2, enable=False)
     rootnode.gravity.value = [0, -9.810, 0]
@@ -122,12 +120,23 @@ def createScene(rootnode):
     ONLYPULLEY = False
     CABLEMODEL = "beam"  # "cosserat" or "beam"
 
-    length = 2
-    nbSections = params.CableParameters.nbSections
-    dx = length / nbSections
+    params = Parameters()
+    params.cable.length = 2
+
+    # Important parameters
+    params.cable.youngModulus = 1.205e11  # in kg/mm/s2 -> N*1e3
+    loadMass = 1000  # in kg
+
+    coef = 2
+    params.cable.nbSections = 40 * coef
+    nbPointsOnPulley = 5 * coef
+
+    length = params.cable.length
+    nbSections = params.cable.nbSections
+    r = params.pulley.radius
 
     pulleys = simulation.addChild('Pulleys')
-    pulleys.addObject("MechanicalObject", position=[-0.07, length / 2 - 0.075, 0, 0, 0, 0, 1], template='Rigid3')
+    pulleys.addObject("MechanicalObject", position=[-r, (length - pi * r) / 2, 0, 0, 0, 0, 1], template='Rigid3')
     pulleys.addObject("FixedConstraint", indices=[0])
 
     pulley = Pulley(pulleys, indexInput2=0).node
@@ -137,9 +146,9 @@ def createScene(rootnode):
     if not ONLYPULLEY:
         # Load
         load = simulation.addChild('Load')
-        load.addObject('MechanicalObject', position=[dx * 3, 0, 0, 0, 0, 0, 1], template='Rigid3',
-                       showObject=False, showObjectScale=0.05)
-        load.addObject('UniformMass', totalMass=500)
+        load.addObject('MechanicalObject', position=[r, 0, 0, 0, 0, 0, 1], template='Rigid3',
+                       showObject=False, showObjectScale=0.00005)
+        load.addObject('UniformMass', totalMass=loadMass, showAxisSizeFactor=0.1)
         visu = load.addChild('Visu')
         visu.addObject('MeshOBJLoader', filename='mesh/cube.obj')
         visu.addObject('OglModel', src='@MeshOBJLoader',
@@ -147,11 +156,14 @@ def createScene(rootnode):
         visu.addObject('RigidMapping')
 
         # Cable
-        positions = [[- dx * 3, dx * i, 0, 0, 0, 0.707, 0.707] for i in range(floor(nbSections / 2) - 1)]
-        positions += [[-0.03, length / 2 - 0.02, 0, 0, 0, 0, 1]]
-        positions += [[0, length / 2, 0, 0, 0, 0, 1]]
-        positions += [[0.03, length / 2 - 0.02, 0, 0, 0, 0, 1]]
-        positions += [[dx * 3, length / 2 - dx * (i + 1), 0, 0, 0, -0.707, 0.707] for i in range(1, floor(nbSections / 2))]
+        nbSectionsHalf = floor((nbSections - nbPointsOnPulley) / 2)
+        dx = (length - pi * r) / 2 / nbSectionsHalf
+        positions = [[- r, dx * i, 0, 0., 0., cos(pi/4), sin(pi/4)] for i in range(nbSectionsHalf + 1)]
+
+        for i in range(nbPointsOnPulley):
+            angle = - pi / 2 + (i + 1) * pi / nbPointsOnPulley
+            positions += [[r * sin(angle), (length - pi * r) / 2 + r * cos(angle), 0., 0., 0., cos(angle/2 + pi/2), sin(angle/2 + pi/2)]]
+        positions += [[r, (length - pi * r) / 2 - dx * (i + 1), 0, 0., 0., cos(-pi/4), sin(-pi/4)] for i in range(nbSections - nbSectionsHalf - nbPointsOnPulley)]
 
         cables = simulation.addChild('Cables')
         cable = Cable(modelling, cables,
@@ -159,6 +171,7 @@ def createScene(rootnode):
                       attachNode=load, attachIndex=0,
                       cableModel=CABLEMODEL, name="Cable").beam
         cable.base.addObject('FixedConstraint', indices=[0])
+        cable.deformable.addObject('PartialFixedConstraint', fixedDirections=[0, 0, 1, 0, 0, 0], fixAll=True)
 
         # Cable pulley interaction
         difference = cable.rod.addChild('Difference')
@@ -174,7 +187,7 @@ def createScene(rootnode):
                              input2=cable.rod.getMechanicalState().linkpath,
                              interpolationInput2=cable.rod.BeamInterpolation.linkpath,
                              output=difference.getMechanicalState().linkpath,
-                             draw=False, drawSize=0.1)
+                             draw=True, drawSize=0.01)
         if CABLEMODEL == "beam":
             pulley.PulleyController.cable = cable.node
             rootnode.addObject(CablesGUI(cables=cables))

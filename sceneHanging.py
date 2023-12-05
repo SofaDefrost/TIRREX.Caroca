@@ -25,7 +25,7 @@ def createScene(rootnode):
 
     settings, modelling, simulation = addHeader(rootnode)
     addSolvers(simulation, firstOrder=False, rayleighStiffness=0.2)
-    rootnode.VisualStyle.displayFlags = "showInteractionForceFields showCollisionModels"
+    rootnode.VisualStyle.displayFlags = "showInteractionForceFields"
 
     system = System(modelling, simulation, cableModel='beam')
     for i, cable in enumerate(system.cables.children):

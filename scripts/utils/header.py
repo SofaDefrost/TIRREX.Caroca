@@ -53,10 +53,10 @@ def addHeader(rootnode, multithreading=False, inverse=False, withCollision=False
     settings.addObject('AttachBodyButtonSetting', stiffness=1e6)
 
     rootnode.addObject('VisualStyle')
-    rootnode.addObject('CollisionPipeline')
     rootnode.addObject("DefaultVisualManagerLoop")
 
     if withCollision:
+        rootnode.addObject('CollisionPipeline')
         rootnode.addObject('RuleBasedContactManager', responseParams='mu=0.8', response='FrictionContactConstraint')
         rootnode.addObject('BruteForceBroadPhase')
         rootnode.addObject('BVHNarrowPhase')
