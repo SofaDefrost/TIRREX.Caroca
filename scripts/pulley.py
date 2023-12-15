@@ -57,7 +57,7 @@ class Pulley:
                         showIndices=False, showIndicesScale=0.1)
 
         slidingpoints = rigid.addChild('SlidingPoints')
-        slidingpoints.addObject('MechanicalObject', template='Rigid3', showObject=True, showObjectScale=0.01,
+        slidingpoints.addObject('MechanicalObject', template='Rigid3', showObject=False, showObjectScale=0.01,
                                 position=[
                                     [-r, -0.1, 0, 0, 0, sin(pi / 4), cos(pi / 4)],
                                     [-r, 0, 0, 0, 0, sin(pi / 4), cos(pi / 4)],
@@ -118,7 +118,7 @@ def createScene(rootnode):
     rootnode.gravity.value = [0, -9.810, 0]
 
     ONLYPULLEY = False
-    CABLEMODEL = "beam"  # "cosserat" or "beam"
+    CABLEMODEL = "cosserat"  # "cosserat" or "beam"
 
     params = Parameters()
     params.cable.length = 2
@@ -144,6 +144,7 @@ def createScene(rootnode):
     slidingpoints = pulley.Rigid.SlidingPoints
 
     if not ONLYPULLEY:
+
         # Load
         load = simulation.addChild('Load')
         load.addObject('MechanicalObject', position=[r, 0, 0, 0, 0, 0, 1], template='Rigid3',
@@ -159,11 +160,14 @@ def createScene(rootnode):
         nbSectionsHalf = floor((nbSections - nbPointsOnPulley) / 2)
         dx = (length - pi * r) / 2 / nbSectionsHalf
         positions = [[- r, dx * i, 0, 0., 0., cos(pi/4), sin(pi/4)] for i in range(nbSectionsHalf + 1)]
-
         for i in range(nbPointsOnPulley):
             angle = - pi / 2 + (i + 1) * pi / nbPointsOnPulley
             positions += [[r * sin(angle), (length - pi * r) / 2 + r * cos(angle), 0., 0., 0., cos(angle/2 + pi/2), sin(angle/2 + pi/2)]]
         positions += [[r, (length - pi * r) / 2 - dx * (i + 1), 0, 0., 0., cos(-pi/4), sin(-pi/4)] for i in range(nbSections - nbSectionsHalf - nbPointsOnPulley)]
+
+        if CABLEMODEL == "cosserat":
+            for i, pos in enumerate(positions):
+                pos[0:3] = [-r + i * dx, 0., 0.]
 
         cables = simulation.addChild('Cables')
         cable = Cable(modelling, cables,
@@ -171,7 +175,6 @@ def createScene(rootnode):
                       attachNode=load, attachIndex=0,
                       cableModel=CABLEMODEL, name="Cable").beam
         cable.base.addObject('FixedConstraint', indices=[0])
-        cable.deformable.addObject('PartialFixedConstraint', fixedDirections=[0, 0, 1, 0, 0, 0], fixAll=True)
 
         # Cable pulley interaction
         difference = cable.rod.addChild('Difference')
@@ -187,11 +190,13 @@ def createScene(rootnode):
                              input2=cable.rod.getMechanicalState().linkpath,
                              interpolationInput2=cable.rod.BeamInterpolation.linkpath,
                              output=difference.getMechanicalState().linkpath,
-                             draw=True, drawSize=0.01)
+                             draw=False, drawSize=0.01)
         if CABLEMODEL == "beam":
             pulley.PulleyController.cable = cable.node
             rootnode.addObject(CablesGUI(cables=cables))
+
     else:  # Animate pulley
+
         def animation(factor, target, value, index, direction, startTime=0):
             if factor > 0:
                 pos = np.copy(target.position.value)

@@ -94,7 +94,8 @@ class BaseBeam(BaseObject):
         self.rod = self.deformable.addChild('Rod')
         self.base.addChild(self.rod)
         self.rod.addObject('EdgeSetTopologyContainer', edges=[[i, i + 1] for i in range(nbSections)])
-        self.rod.addObject('MechanicalObject', template='Rigid3', position=self.positions)
+        self.rod.addObject('MechanicalObject', template='Rigid3', position=self.positions,
+                           showIndices=False, showIndicesScale=0.005)
         self.rod.addObject('BeamInterpolation',
                            defaultYoungModulus=self.params.youngModulus,
                            dofsAndBeamsAligned=True, straight=True,

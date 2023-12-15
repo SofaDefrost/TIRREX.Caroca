@@ -1,6 +1,8 @@
 from scripts.utils.baseobject import BaseObject
-from splib3.numerics import Quat
+from scripts.utils.cosserat.utils import getStrainFromAngles
+from splib3.numerics import Quat, Vec3, vsub
 from math import pi
+import numpy as np
 
 
 class BaseCosserat(BaseObject):
@@ -23,7 +25,6 @@ class BaseCosserat(BaseObject):
 
         nbSections = self.params.nbSections
         nbPoints = nbSections + 1
-        dx = self.length / nbSections
 
         indexPairs = [[0, 0]]
         for i in range(nbSections):
@@ -32,7 +33,19 @@ class BaseCosserat(BaseObject):
         self.base = self.node.addChild('RigidBase')
         self.base.addObject('MechanicalObject', template='Rigid3', position=self.positions[0])
 
+        rod = self.base.addChild('Rod')
+        self.rod = rod
         self.deformable = self.node.addChild('Deformable')
+        self.deformable.addChild(rod)
+
+        rod.addObject('EdgeSetTopologyContainer',
+                      position=[pos[0:3] for pos in self.positions],
+                      edges=[[i, i+1] for i in range(nbSections)])
+        rod.addObject('MechanicalObject', template='Rigid3',
+                      position=self.positions, showIndices=False, showIndicesScale=0.005)
+        rod.addObject('BeamInterpolation')
+        rod.init()
+        lengths = [l for l in rod.BeamInterpolation.lengthList.value]
 
         # Convert Rigid3 orientation description to Cosserat bending description
         # [[torsion strain, y_bending strain, z_bending strain]]
@@ -40,42 +53,22 @@ class BaseCosserat(BaseObject):
         for i in range(len(self.positions) - 1):
             q1 = Quat(self.positions[i][3:7])
             q2 = Quat(self.positions[i + 1][3:7])
-            q = q1.rotateFromQuat(q2.getInverse())
-            angles = q.getEulerAngles()  # TODO: angles to strain
-            strain.append([0., 0., 0.])
+            q = q2.rotateFromQuat(q1.getInverse())
+            angles = q.getEulerAngles()
+            strain.append(getStrainFromAngles(angles, lengths[i]))
 
-        self.deformable.addObject('MechanicalObject', position=strain)
+        self.deformable.addObject('MechanicalObject', position=strain, rest_position=[0, 0, 0] * nbSections)
         self.deformable.addObject('BeamHookeLawForceField',
                                   youngModulus=self.params.youngModulus,
                                   poissonRatio=self.params.poissonRatio,
                                   radius=self.params.radius,
-                                  length=[dx] * nbSections)
+                                  length=lengths)
         self.node.addData(name="indexExtremity", type='int', value=nbPoints - 1)
 
-        rod = self.base.addChild('Rod')
-        self.rod = rod
-        self.deformable.addChild(rod)
-
-        nbSections = self.params.nbSections
-        nbPoints = nbSections + 1
-        dx = self.length / nbSections
-
-        rod.addObject('EdgeSetTopologyContainer',
-                      position=[pos[0:3] for pos in self.positions],
-                      edges=[[i, i+1] for i in range(nbSections)])
-        rod.addObject('MechanicalObject', template='Rigid3',
-                      position=[pos[0:3] + [0., 0., 0., 1.] for pos in self.positions]
-                      )
-        rod.addObject('BeamInterpolation')
-
         totalMass = self.params.density * self.length * self.params.radius * self.params.radius * pi
-        inertiaMatrix = [[1 / 2 * self.params.radius*self.params.radius, 0, 0],
-                         [0, 1 / 12 * (3 * self.params.radius * self.params.radius + dx * dx), 0],
-                         [0, 0, 1 / 12 * (3 * self.params.radius * self.params.radius + dx * dx)]]
-        vertexMass = [totalMass/nbPoints, 1, inertiaMatrix]
         rod.addObject('UniformMass', totalMass=totalMass)
         rod.addObject('DiscreteCosseratMapping',
-                      curv_abs_input=[self.positions[i][0] for i in range(0, nbPoints, 2)],
+                      curv_abs_input=[self.positions[i][0] for i in range(nbPoints)],
                       curv_abs_output=[self.positions[i][0] for i in range(nbPoints)],
                       input1=self.deformable.MechanicalObject.getLinkPath(),
                       input2=self.base.MechanicalObject.getLinkPath(),

@@ -86,8 +86,6 @@ def createScene(rootnode):
                   cableModel="beam", name="CableBeam").beam
     cable.base.addObject('FixedConstraint', indices=[0])
 
-    angle = pi / 4
-    # positions = [[dx * i, 1., 0., 0., 0., sin(angle/2), cos(angle/2)] for i in range(nbSections + 1)]
     positions = [[dx * i, 1., 0., 0., 0., 0., 1.] for i in range(nbSections + 1)]
     cable = Cable(modelling, cables,
                   positions=positions, length=length,

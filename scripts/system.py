@@ -214,7 +214,7 @@ class System:
         self.cables = self.simulation.addChild('Cables')
         for i in range(nbCables):
             positionPulley = vadd(positionStructure[i], self.positionsPulley[i])
-            positionPulley[0] += [1, 1, 1, 1, -1, -1, -1, -1][i] * - shift
+            positionPulley[0] += [1., 1., 1., 1., -1., -1., -1., -1.][i] * - shift
             positionPulley[1] += self.params.pulley.radius
             direction = Vec3(vsub(positionBase[self.params.structure.cornersOrder[i]], positionPulley))
 
@@ -234,13 +234,17 @@ class System:
             positions = [[positionPulley[0] - direction[0] * dx,
                           positionPulley[1] - length2 + dx * i,
                           positionPulley[2],
-                          0, 0, 0.707, 0.707] for i in range(nbSections2)]
+                          0., 0., 0.707, 0.707] for i in range(nbSections2)]
 
             positions += [[positionPulley[0] + direction[0] * dx * i,
                            positionPulley[1] + direction[1] * dx * i,
                            positionPulley[2] + direction[2] * dx * i]
                           + list(q) for i in range(nbSections1)]
-            positions += [positionBase[self.params.structure.cornersOrder[i]]]
+            positions += [list(positionBase[self.params.structure.cornersOrder[i]][0:3]) + list(q)]
+
+            if self.cableModel == "cosserat":
+                for k, pos in enumerate(positions):
+                    pos[0:3] = [positionPulley[0] + dx * k, positionPulley[1] - length2, positionPulley[2]]
 
             beam = Cable(self.modelling, self.cables,
                          positions=positions, length=totalLength,
