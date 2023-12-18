@@ -118,7 +118,7 @@ def createScene(rootnode):
     rootnode.gravity.value = [0, -9.810, 0]
 
     ONLYPULLEY = False
-    CABLEMODEL = "cosserat"  # "cosserat" or "beam"
+    CABLEMODEL = "beam"  # "cosserat" or "beam"
 
     params = Parameters()
     params.cable.length = 2

@@ -55,8 +55,8 @@ class BaseCosserat(BaseObject):
             q2 = Quat(self.positions[i + 1][3:7])
             q = q2.rotateFromQuat(q1.getInverse())
             angles = q.getEulerAngles()
-            # lengths[i] = Vec3(vsub(self.positions[i][0:3], self.positions[i + 1][0:3])).getNorm()
-            strain.append(getStrainFromAngles(angles, lengths[i]))
+            xi = getStrainFromAngles(angles, lengths[i])
+            strain.append(xi)
 
         self.deformable.addObject('MechanicalObject', position=strain, rest_position=[0, 0, 0] * nbSections)
         self.deformable.addObject('BeamHookeLawForceField',

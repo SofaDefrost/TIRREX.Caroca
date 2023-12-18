@@ -50,9 +50,10 @@ def piecewiseLogmap(curvAbs, gX):
     """
 
     theta = computeTheta(curvAbs, gX)
+    curvAbsInv = 1 / curvAbs
 
     if theta == 0.0:
-        xiHat = 1.0 / curvAbs * (gX - np.identity(4))
+        xiHat = curvAbsInv * (gX - np.identity(4))
     else:
         t0 = curvAbs * theta
         t1 = np.sin(t0)
@@ -69,11 +70,11 @@ def piecewiseLogmap(curvAbs, gX):
         c2 = (2 * t0 * t2 + t5 - t1 - t3)
         c3 = (t0 * t2 - t1)
 
-        xiHat = 1.0 / curvAbs * (0.125 *
-                                 (1.0 / np.sin(t0 / 2.0) ** 3) *
-                                 np.cos(t0 / 2.0) *
-                                 (c0 * np.identity(4) - c1 * gX + c2 * gX2 - c3 * gX3)
-                                 )
+        xiHat = curvAbsInv * (0.125 *
+                              (1.0 / np.sin(t0 / 2.0) ** 3) *
+                              np.cos(t0 / 2.0) *
+                              (c0 * np.identity(4) - c1 * gX + c2 * gX2 - c3 * gX3)
+                              )
 
     xi = np.array([xiHat[2, 1], xiHat[0, 2], xiHat[1, 0], xiHat[0, 3], xiHat[1, 3], xiHat[2, 3]])
 
