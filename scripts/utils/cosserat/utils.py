@@ -1,46 +1,54 @@
 # Author Yinoussa Adagolodjo
 
 import numpy as np
+from math import log
 
 
-def rotationMatrixX(angle):
+def rotationMatrixX(theta):
     rotation = np.array([[1, 0, 0],
-                         [0, np.cos(angle), -np.sin(angle)],
-                         [0, np.sin(angle), np.cos(angle)]])
+                         [0, np.cos(theta), -np.sin(theta)],
+                         [0, np.sin(theta), np.cos(theta)]])
     return rotation
 
 
-def rotationMatrixY(angle):
-    rotation = np.array([[np.cos(angle), 0, np.sin(angle)],
+def rotationMatrixY(theta):
+    rotation = np.array([[np.cos(theta), 0, np.sin(theta)],
                          [0, 1, 0],
-                         [-np.sin(angle), 0, np.cos(angle)]])
+                         [-np.sin(theta), 0, np.cos(theta)]])
     return rotation
 
 
-def rotationMatrixZ(angle):
-    rotation = np.array([[np.cos(angle), -np.sin(angle), 0],
-                         [np.sin(angle), np.cos(angle), 0],
+def rotationMatrixZ(theta):
+    rotation = np.array([[np.cos(theta), -np.sin(theta), 0],
+                         [np.sin(theta), np.cos(theta), 0],
                          [0, 0, 1]])
     return rotation
 
 
-def computeRotationMatrix(x, y, z):
-    rotation = np.dot(rotationMatrixZ(z), np.dot(rotationMatrixY(y), rotationMatrixX(x)))
+def computeRotationMatrix(angles):
+    rotation = np.dot(rotationMatrixZ(angles[2]), np.dot(rotationMatrixY(angles[1]), rotationMatrixX(angles[0])))
     return rotation
 
 
 def computeTheta(x, gX):
-    Tr_gx = np.trace(gX)
+    traceGx = np.trace(gX)
     if x <= np.finfo(float).eps:
         theta = 0.0
     else:
-        theta = (1.0 / x) * np.arccos((Tr_gx / 2.0) - 1)
-
+        theta = 1.0 / x * np.arccos((traceGx / 2.0) - 1)
     return theta
 
 
 def piecewiseLogmap(curvAbs, gX):
-    # xi_hat = np.zeros((4, 4), dtype=float)
+    """
+
+    Args:
+        curvAbs:
+        gX:
+
+    Returns:
+
+    """
 
     theta = computeTheta(curvAbs, gX)
 
@@ -57,7 +65,7 @@ def piecewiseLogmap(curvAbs, gX):
         gp2 = np.dot(gX, gX)
         gp3 = np.dot(gp2, gX)
 
-        xi_hat = 1.0 / curvAbs * (0.1371 *
+        xi_hat = 1.0 / curvAbs * (0.125 *
                                   (1.0 / np.sin(t0 / 2.0) ** 3) *
                                   np.cos(t0 / 2.0) *
                                   ((t5 - t1) * np.identity(4) - (t0 * t2 + 2 * t5 - t1 - t3) * gX + (
@@ -79,40 +87,21 @@ def getStrainFromAngles(angles, curvAbs):
     Returns:
 
     """
-    R = rotationMatrixX(angles[0])
+
     gX = np.zeros((4, 4), dtype=float)
-    for k in range(3):
-        for j in range(3):
-            gX[k][j] = R[k][j]
     gX[0][3] = curvAbs  # to deploy the beam node and the rest part of transform is equal to null
     gX[3][3] = 1  # The homogeneous matrix
+
+    gX[0:3, 0:3] = rotationMatrixX(angles[0])
     xcix = piecewiseLogmap(curvAbs, gX)
 
-    R = rotationMatrixY(angles[1])
-    gX = np.zeros((4, 4), dtype=float)
-    for k in range(3):
-        for j in range(3):
-            gX[k][j] = R[k][j]
-    gX[0][3] = curvAbs  # to deploy the beam node and the rest part of transform is equal to null
-    gX[3][3] = 1  # The homogeneous matrix
+    gX[0:3, 0:3] = rotationMatrixY(angles[1])
     xciy = piecewiseLogmap(curvAbs, gX)
 
-    R = rotationMatrixZ(angles[2])
-    gX = np.zeros((4, 4), dtype=float)
-    for k in range(3):
-        for j in range(3):
-            gX[k][j] = R[k][j]
-    gX[0][3] = curvAbs  # to deploy the beam node and the rest part of transform is equal to null
-    gX[3][3] = 1  # The homogeneous matrix
+    gX[0:3, 0:3] = rotationMatrixZ(angles[2])
     xciz = piecewiseLogmap(curvAbs, gX)
 
-    # R = computeRotationMatrix(angles[0], angles[1], angles[2])
-    # gX = np.zeros((4, 4), dtype=float)
-    # for k in range(3):
-    #     for j in range(3):
-    #         gX[k][j] = R[k][j]
-    # gX[0][3] = curvAbs  # to deploy the beam node and the rest part of transform is equal to null
-    # gX[3][3] = 1  # The homogeneous matrix
+    # gX[0:3, 0:3] = computeRotationMatrix(angles)
     # xci = piecewiseLogmap(curvAbs, gX)
 
     return [xcix[0], xciy[1], xciz[2]]
