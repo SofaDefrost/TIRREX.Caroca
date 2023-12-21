@@ -1,6 +1,7 @@
 # Author Yinoussa Adagolodjo
 
 import numpy as np
+from scipy.linalg import logm
 
 
 def rotationMatrixX(theta):
@@ -29,15 +30,6 @@ def computeRotationMatrix(angles):
     return rotation
 
 
-def computeTheta(x, gX):
-    traceGx = np.trace(gX)
-    if x <= np.finfo(float).eps:
-        theta = 0.0
-    else:
-        theta = 1.0 / x * np.arccos((traceGx / 2.0) - 1)
-    return theta
-
-
 def piecewiseLogmap(curvAbs, gX):
     """
 
@@ -49,34 +41,10 @@ def piecewiseLogmap(curvAbs, gX):
 
     """
 
-    theta = computeTheta(curvAbs, gX)
     curvAbsInv = 1 / curvAbs
+    xiHat = curvAbsInv * logm(gX)
 
-    if theta == 0.0:
-        xiHat = curvAbsInv * (gX - np.identity(4))
-    else:
-        t0 = curvAbs * theta
-        t1 = np.sin(t0)
-        t2 = np.cos(t0)
-        t3 = 2 * t1 * t2
-        t4 = 1 - 2 * t1 ** 2
-        t5 = t0 * t4
-
-        gX2 = np.dot(gX, gX)
-        gX3 = np.dot(gX2, gX)
-
-        c0 = (t5 - t1)
-        c1 = (t0 * t2 + 2 * t5 - t1 - t3)
-        c2 = (2 * t0 * t2 + t5 - t1 - t3)
-        c3 = (t0 * t2 - t1)
-
-        xiHat = curvAbsInv * (0.125 *
-                              (1.0 / np.sin(t0 / 2.0) ** 3) *
-                              np.cos(t0 / 2.0) *
-                              (c0 * np.identity(4) - c1 * gX + c2 * gX2 - c3 * gX3)
-                              )
-
-    xi = np.array([xiHat[2, 1], xiHat[0, 2], xiHat[1, 0], xiHat[0, 3], xiHat[1, 3], xiHat[2, 3]])
+    xi = np.array([xiHat[2][1], xiHat[0][2], xiHat[1][0], xiHat[0][3], xiHat[1][3], xiHat[2][3]])
 
     return xi
 
