@@ -1,8 +1,37 @@
 from scripts.utils.baseobject import BaseObject
-from scripts.utils.cosserat.utils import getStrainFromAngles
 from splib3.numerics import Quat, Vec3, vsub
 from math import pi
 import numpy as np
+from scipy.linalg import logm, inv
+from scipy.spatial.transform import Rotation
+import Sofa
+
+
+def getStrainFromQuat(frame, curvAbs, gXp):
+    """
+
+    Args:
+        frame:
+        curvAbs: abscissa curve
+        gXp: previous matrix
+
+    Returns:
+
+    """
+
+    gX = np.zeros((4, 4), dtype=float)
+    gX[0:3, 0:3] = Rotation.from_quat(frame[3:7]).as_matrix()
+    gX[0:3, 3] = frame[0:3]
+    gX[3, 3] = 1
+
+    if curvAbs <= 0.:
+        xi = [0., 0., 0.]
+    else:
+        gXpInv = inv(gXp)
+        xiHat = 1 / curvAbs * logm(np.dot(gXpInv, gX))
+        xi = [xiHat[2][1], xiHat[0][2], xiHat[1][0], xiHat[0][3], xiHat[1][3], xiHat[2][3]]
+
+    return xi[0:3], gX
 
 
 class BaseCosserat(BaseObject):
@@ -43,19 +72,21 @@ class BaseCosserat(BaseObject):
                       edges=[[i, i+1] for i in range(nbSections)])
         rod.addObject('MechanicalObject', template='Rigid3',
                       position=self.positions, showIndices=False, showIndicesScale=0.005)
-        rod.addObject('BeamInterpolation')
-        rod.init()
-        lengths = [l for l in rod.BeamInterpolation.lengthList.value]
+        rod.addObject("BeamInterpolation")
 
         # Convert Rigid3 orientation description to Cosserat bending description
         # [[torsion strain, y_bending strain, z_bending strain]]
+        gX = np.zeros((4, 4), dtype=float)
+        gX[0:3, 0:3] = Rotation.from_quat(Quat(self.positions[0][3:7])).as_matrix()
+        gX[0:3, 3] = self.positions[0][0:3]
+        gX[3, 3] = 1
+
+        lengths = []
         strain = []
         for i in range(len(self.positions) - 1):
-            q1 = Quat(self.positions[i][3:7])
-            q2 = Quat(self.positions[i + 1][3:7])
-            q = q2.rotateFromQuat(q1.getInverse())
-            angles = q.getEulerAngles()
-            xi = getStrainFromAngles(angles, lengths[i])
+            length = Vec3(vsub(self.positions[i][0:3], self.positions[i + 1][0:3])).getNorm()
+            lengths.append(length)
+            xi, gX = getStrainFromQuat(self.positions[i + 1], length, gX)
             strain.append(xi)
 
         self.deformable.addObject('MechanicalObject', position=strain, rest_position=[0, 0, 0] * nbSections)
@@ -67,10 +98,15 @@ class BaseCosserat(BaseObject):
         self.node.addData(name="indexExtremity", type='int', value=nbPoints - 1)
 
         totalMass = self.params.density * self.length * self.params.radius * self.params.radius * pi
-        rod.addObject('UniformMass', totalMass=totalMass)
+        rod.addObject('UniformMass', totalMass=totalMass, showAxisSizeFactor=0.01)
+        l = 0
+        curv_abs = [l]
+        for length in lengths:
+            l += length
+            curv_abs.append(l)
         rod.addObject('DiscreteCosseratMapping',
-                      curv_abs_input=[self.positions[i][0] for i in range(nbPoints)],
-                      curv_abs_output=[self.positions[i][0] for i in range(nbPoints)],
+                      curv_abs_input=curv_abs,
+                      curv_abs_output=curv_abs,
                       input1=self.deformable.MechanicalObject.getLinkPath(),
                       input2=self.base.MechanicalObject.getLinkPath(),
                       output=rod.getLinkPath(),

@@ -95,7 +95,7 @@ class BaseBeam(BaseObject):
         self.base.addChild(self.rod)
         self.rod.addObject('EdgeSetTopologyContainer', edges=[[i, i + 1] for i in range(nbSections)])
         self.rod.addObject('MechanicalObject', template='Rigid3', position=self.positions,
-                           showIndices=False, showIndicesScale=0.005)
+                           showIndices=False, showIndicesScale=0.005, showObject=False, showObjectScale=0.03)
         self.rod.addObject('BeamInterpolation',
                            defaultYoungModulus=self.params.youngModulus,
                            dofsAndBeamsAligned=True, straight=True,

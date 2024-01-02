@@ -51,7 +51,8 @@ class Cable:
                            interpolationInput2=beam.rod.BeamInterpolation.linkpath,
                            output=distance.MechanicalObject.linkpath,
                            directions=[1, 1, 1, 0, 0, 0, 0],
-                           indicesInput1=self.attachIndex)
+                           indicesInput1=self.attachIndex,
+                           draw=False, drawSize=0.1)
 
         return beam
 
@@ -70,7 +71,7 @@ def createScene(rootnode):
     load = simulation.addChild('Load')
     load.addObject('MechanicalObject', template='Rigid3',
                    position=[[length, 0, 0, 0, 0, 0, 1],
-                             [length, 1, 0, 0, 0, 0, 1]],
+                             [length, 0.1, 0, 0, 0, 0, 1]],
                    showObject=True, showObjectScale=0.1)
     load.addObject('UniformMass', totalMass=100)
 
@@ -79,14 +80,14 @@ def createScene(rootnode):
     nbSections = params.CableParameters.nbSections
     dx = length / nbSections
 
-    positions = [[dx * i, 0, 0, 0, 0, 0, 1] for i in range(nbSections + 1)]
+    positions = [[dx * i, 0., 0.,  0., 0., 0., 1.] for i in range(nbSections + 1)]
     cable = Cable(modelling, cables,
                   positions=positions, length=length,
                   attachNode=load, attachIndex=0,
                   cableModel="beam", name="CableBeam").beam
     cable.base.addObject('FixedConstraint', indices=[0])
 
-    positions = [[dx * i, 1., 0., 0., 0., 0., 1.] for i in range(nbSections + 1)]
+    positions = [[dx * i, 0.1, 0.,  0., 0., 0., 1.] for i in range(nbSections + 1)]
     cable = Cable(modelling, cables,
                   positions=positions, length=length,
                   attachNode=load, attachIndex=1,

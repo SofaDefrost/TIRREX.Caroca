@@ -136,7 +136,7 @@ def createScene(rootnode):
     r = params.pulley.radius
 
     pulleys = simulation.addChild('Pulleys')
-    pulleys.addObject("MechanicalObject", position=[-r, (length - pi * r) / 2, 0, 0, 0, 0, 1], template='Rigid3')
+    pulleys.addObject("MechanicalObject", position=[0, (length - pi * r) / 2, 0, 0, 0, 0, 1], template='Rigid3')
     pulleys.addObject("FixedConstraint", indices=[0])
 
     pulley = Pulley(pulleys, indexInput2=0).node
@@ -147,7 +147,7 @@ def createScene(rootnode):
 
         # Load
         load = simulation.addChild('Load')
-        load.addObject('MechanicalObject', position=[r, 0, 0, 0, 0, 0, 1], template='Rigid3',
+        load.addObject('MechanicalObject', position=[2 * r, 0, 0, 0, 0, 0, 1], template='Rigid3',
                        showObject=False, showObjectScale=0.00005)
         load.addObject('UniformMass', totalMass=loadMass, showAxisSizeFactor=0.1)
         visu = load.addChild('Visu')
@@ -159,15 +159,11 @@ def createScene(rootnode):
         # Cable
         nbSectionsHalf = floor((nbSections - nbPointsOnPulley) / 2)
         dx = (length - pi * r) / 2 / nbSectionsHalf
-        positions = [[- r, dx * i, 0, 0., 0., cos(pi/4), sin(pi/4)] for i in range(nbSectionsHalf + 1)]
+        positions = [[0., dx * i, 0., 0., 0., cos(pi/4), sin(pi/4)] for i in range(nbSectionsHalf + 1)]
         for i in range(nbPointsOnPulley):
             angle = - pi / 2 + (i + 1) * pi / nbPointsOnPulley
-            positions += [[r * sin(angle), (length - pi * r) / 2 + r * cos(angle), 0., 0., 0., cos(angle/2 + pi/2), sin(angle/2 + pi/2)]]
-        positions += [[r, (length - pi * r) / 2 - dx * (i + 1), 0, 0., 0., cos(-pi/4), sin(-pi/4)] for i in range(nbSections - nbSectionsHalf - nbPointsOnPulley)]
-
-        if CABLEMODEL == "cosserat":
-            for i, pos in enumerate(positions):
-                pos[0:3] = [-r + i * dx, 0., 0.]
+            positions += [[r + r * sin(angle), (length - pi * r) / 2 + r * cos(angle), 0., 0., 0., cos(angle/2 + pi/2), sin(angle/2 + pi/2)]]
+        positions += [[2 * r, (length - pi * r) / 2 - dx * (i + 1), 0, 0., 0., cos(-pi/4), sin(-pi/4)] for i in range(nbSections - nbSectionsHalf - nbPointsOnPulley)]
 
         cables = simulation.addChild('Cables')
         cable = Cable(modelling, cables,
