@@ -71,7 +71,8 @@ class BaseCosserat(BaseObject):
                       position=[pos[0:3] for pos in self.positions],
                       edges=[[i, i+1] for i in range(nbSections)])
         rod.addObject('MechanicalObject', template='Rigid3',
-                      position=self.positions, showIndices=False, showIndicesScale=0.005)
+                      position=self.positions, showIndices=False, showIndicesScale=0.005, showObject=True,
+                      showObjectScale=0.05)
         rod.addObject("BeamInterpolation")
 
         # Convert Rigid3 orientation description to Cosserat bending description

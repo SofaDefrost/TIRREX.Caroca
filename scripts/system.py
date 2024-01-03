@@ -1,6 +1,6 @@
 from params import Parameters
 import numpy as np
-from math import floor
+from math import floor, sin, cos, pi
 
 from splib3.numerics import vadd, vsub, Quat, Vec3
 
@@ -205,7 +205,7 @@ class System:
         nbCables = 8
         positionStructure = self.structure.MechanicalObject.position.value
         positionBase = list(np.copy(self.corners.MechanicalObject.position.value))
-        shift = (self.params.pulley.radius + self.params.cable.radius) / 2.
+        pulleyRadius = self.params.pulley.radius
 
         if self.cableModel == 'beam':  # TODO: remove once we have the sliding actuator
             self.structure.addData(name='velocity', type='float', help='cable deployment velocity', value=0)
@@ -213,38 +213,63 @@ class System:
 
         self.cables = self.simulation.addChild('Cables')
         for i in range(nbCables):
-            positionPulley = vadd(positionStructure[i], self.positionsPulley[i])
-            positionPulley[0] += [1., 1., 1., 1., -1., -1., -1., -1.][i] * - shift
-            positionPulley[1] += self.params.pulley.radius
-            direction = Vec3(vsub(positionBase[self.params.structure.cornersOrder[i]], positionPulley))
 
+            # Entry position (cable / pulley)
+            beginPulley = vadd(positionStructure[i], self.positionsPulley[i])
+
+            # Top position
+            shift = Vec3([pulleyRadius, pulleyRadius, 0])
+            q = Quat.createFromAxisAngle([0., 1., 0.], self.params.structure.pulleysorientations[i])
+            shift.rotateFromQuat(q)
+            topPulley = vadd(beginPulley, shift)
+
+            # Center position
+            shift = Vec3([pulleyRadius, 0, 0])
+            q = Quat.createFromAxisAngle([0., 1., 0.], self.params.structure.pulleysorientations[i])
+            shift.rotateFromQuat(q)
+            centerPulley = vadd(beginPulley, shift)
+
+            # Cable direction
+            direction = Vec3(vsub(positionBase[self.params.structure.cornersOrder[i]], topPulley))
             totalLength = self.params.cable.length
             length1 = direction.getNorm()
-            length2 = totalLength - length1
+            length2 = totalLength - length1 - pi / 2 * pulleyRadius
             direction.normalize()
-
-            v = Vec3(direction)
-            q = Quat.createFromVectors(v, Vec3([1., 0., 0.]))
 
             nbSections = self.params.cable.nbSections
             dx = totalLength / nbSections
 
             nbSections1 = floor(length1 / totalLength * nbSections)
-            nbSections2 = nbSections - nbSections1
-            positions = [[positionPulley[0] - direction[0] * dx,
-                          positionPulley[1] - length2 + dx * i,
-                          positionPulley[2],
+            nbSectionsOnPulley = floor((totalLength - length1 - length2) / dx)
+            nbSections2 = nbSections - nbSections1 - nbSectionsOnPulley
+
+            positions = [[beginPulley[0],
+                          beginPulley[1] - length2 + dx * i,
+                          beginPulley[2],
                           0., 0., 0.707, 0.707] for i in range(nbSections2)]
 
-            positions += [[positionPulley[0] + direction[0] * dx * i,
-                           positionPulley[1] + direction[1] * dx * i,
-                           positionPulley[2] + direction[2] * dx * i]
-                          + list(q) for i in range(nbSections1)]
-            positions += [list(positionBase[self.params.structure.cornersOrder[i]][0:3]) + list(q)]
+            for j in range(nbSectionsOnPulley):
+                angle = -pi / 2 / (nbSectionsOnPulley + 1) * (j + 1)
+                qPulley = Quat.createFromAxisAngle([0., 1., 0.], self.params.structure.pulleysorientations[i])
+                axis = Vec3([0., 0., 1.]).rotateFromQuat(qPulley)
+                axis.normalize()
+                q = Quat.createFromAxisAngle(axis, angle)
+                pos = vadd(centerPulley, Vec3(vsub(beginPulley, centerPulley)).rotateFromQuat(q))
+                q = Quat.createFromAxisAngle(axis, -angle)
+                q.rotateFromQuat(qPulley)
+                positions += [list(pos) + list(q)]
 
-            if self.cableModel == "cosserat":
-                for k, pos in enumerate(positions):
-                    pos[0:3] = [positionPulley[0] + dx * k, positionPulley[1] - length2, positionPulley[2]]
+            q = Quat.createFromVectors(Vec3(direction), Vec3([0., 1., 0.]))
+            q.rotateFromQuat(Quat([0., 0., 0.707, 0.707]))
+            q.normalize()
+            positions += [[topPulley[0] + direction[0] * dx * i,
+                           topPulley[1] + direction[1] * dx * i,
+                           topPulley[2] + direction[2] * dx * i]
+                          + list(q) for i in range(nbSections1)]
+            positions += [[topPulley[0] + direction[0] * length1 * 1.001,
+                           topPulley[1] + direction[1] * length1 * 1.001,
+                           topPulley[2] + direction[2] * length1 * 1.001]
+                          + list(q)]
 
             beam = Cable(self.modelling, self.cables,
                          positions=positions, length=totalLength,
@@ -282,10 +307,8 @@ def createScene(rootnode):
 
     settings, modelling, simulation = addHeader(rootnode)
     addSolvers(simulation, firstOrder=False, rayleighStiffness=0.2)
-    rootnode.VisualStyle.displayFlags = "showInteractionForceFields showCollisionModels"
+    rootnode.VisualStyle.displayFlags = "showBehavior showVisualModels showWireframe"
 
     caroca = System(modelling, simulation, cableModel='beam')
-    # for i, cable in enumerate(caroca.cables.children):
-    #     cable.RigidBase.addObject('RestShapeSpringsForceField', points=[0], stiffness=1e12)
-
-    rootnode.addObject('VisualGrid', size=10, nbSubdiv=100)
+    for i, cable in enumerate(caroca.cables.children):
+        cable.RigidBase.addObject('RestShapeSpringsForceField', points=[0], stiffness=1e12)

@@ -7,7 +7,6 @@ def createScene(rootnode):
 
     settings, modelling, simulation = addHeader(rootnode)
     addSolvers(simulation, firstOrder=False, rayleighStiffness=0.2)
-    rootnode.VisualStyle.displayFlags = "showInteractionForceFields"
 
     params = Parameters()
     params.platform.mass = 200
