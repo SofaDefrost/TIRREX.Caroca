@@ -118,14 +118,14 @@ def createScene(rootnode):
     rootnode.gravity.value = [0, -9.810, 0]
 
     ONLYPULLEY = False
-    CABLEMODEL = "beam"  # "cosserat" or "beam"
+    CABLEMODEL = "cosserat"  # "cosserat" or "beam"
 
     params = Parameters()
     params.cable.length = 2
 
     # Important parameters
-    params.cable.youngModulus = 1.205e11  # in kg/mm/s2 -> N*1e3
-    loadMass = 1000  # in kg
+    params.cable.youngModulus = 1.205e10  # in kg/mm/s2 -> N*1e3
+    loadMass = 200  # in kg
 
     coef = 2
     params.cable.nbSections = 40 * coef

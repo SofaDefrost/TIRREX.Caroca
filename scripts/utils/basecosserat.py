@@ -55,10 +55,6 @@ class BaseCosserat(BaseObject):
         nbSections = self.params.nbSections
         nbPoints = nbSections + 1
 
-        indexPairs = [[0, 0]]
-        for i in range(nbSections):
-            indexPairs += [[1, i]]
-
         self.base = self.node.addChild('RigidBase')
         self.base.addObject('MechanicalObject', template='Rigid3', position=self.positions[0])
 
@@ -71,7 +67,7 @@ class BaseCosserat(BaseObject):
                       position=[pos[0:3] for pos in self.positions],
                       edges=[[i, i+1] for i in range(nbSections)])
         rod.addObject('MechanicalObject', template='Rigid3',
-                      position=self.positions, showIndices=False, showIndicesScale=0.005, showObject=True,
+                      position=self.positions, showIndices=False, showIndicesScale=0.005, showObject=False,
                       showObjectScale=0.05)
         rod.addObject("BeamInterpolation")
 
